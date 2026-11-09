@@ -124,7 +124,12 @@ export const LIMITS = {
 
 const REASONING_VALUES = new Set(['none', 'minimal', 'low', 'medium', 'high']);
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): IrisConfig {
+export interface LoadConfigOptions {
+  /** A local AI CLI (--claude, --codex, ...) answers instead of an API, so no key is needed. */
+  localAgent?: boolean;
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadConfigOptions = {}): IrisConfig {
   const problems: string[] = [];
 
   const str = (name: string): string | undefined => {
@@ -174,10 +179,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): IrisConfig {
   if (!model) problems.push(`LLM_MODEL is required for LLM_PROVIDER=${provider}.`);
 
   const apiKey = str('LLM_API_KEY');
-  if (preset.requiresKey && !apiKey) {
+  if (preset.requiresKey && !apiKey && !options.localAgent) {
     problems.push(
       `LLM_API_KEY is required for LLM_PROVIDER=${provider}.` +
-        (preset.keyUrl ? ` Create a free key at ${preset.keyUrl} and add it to .env.` : ''),
+        (preset.keyUrl ? ` Create a free key at ${preset.keyUrl} and add it to .env,` : ' Add it to .env,') +
+        ' or use a signed-in local CLI instead with --claude, --codex, --antigravity or --grok.',
     );
   }
 
@@ -226,7 +232,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): IrisConfig {
       reasoningEffort,
       jsonMode: jsonModeRaw === 'off' ? 'off' : 'json_object',
       temperature,
-      timeoutMs: int('LLM_TIMEOUT_SECONDS', 45, 5, 300) * 1000,
+      // Local CLIs start an agent per call, so they get more time than an API by default.
+      timeoutMs: int('LLM_TIMEOUT_SECONDS', options.localAgent ? 240 : 45, 5, 600) * 1000,
     },
     sender,
     fetch: {
@@ -248,7 +255,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): IrisConfig {
       cacheTtlMs: int('CACHE_TTL_MINUTES', 360, 0, 10_080) * 60_000,
       cacheMaxEntries: 200,
     },
-    runTimeoutMs: int('RUN_TIMEOUT_SECONDS', 90, 15, 600) * 1000,
+    runTimeoutMs: int('RUN_TIMEOUT_SECONDS', options.localAgent ? 600 : 90, 15, 1200) * 1000,
   };
 
   if (problems.length > 0) {
