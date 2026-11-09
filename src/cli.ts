@@ -7,6 +7,7 @@ import { createLlmClient } from './llm.js';
 import { parseRunInput, runIris } from './pipeline.js';
 import { renderMarkdown, renderTerminal, safeText } from './format.js';
 import { createIrisServer, createJsonLogger } from './server.js';
+import { colorDepth, createPrettyLogger, renderBanner, wantsPrettyLogs } from './terminal-log.js';
 import { VERSION } from './version.js';
 
 const HELP = `Iris ${VERSION}: cited lead research and outreach drafts from a company website.
@@ -144,15 +145,19 @@ async function serve(config: IrisConfig, portFlag: string | undefined, hostFlag:
     process.stderr.write(`Invalid --port: ${portFlag}\n`);
     return EXIT.usage;
   }
-  const logger = createJsonLogger();
+  const pretty = wantsPrettyLogs(process.stdout);
+  const depth = colorDepth(process.stdout);
+  const logger = pretty ? createPrettyLogger({ depth }) : createJsonLogger();
   const app = await createIrisServer({ config, llm: createLlmClient(config.llm), logger });
   const address = await app.listen(port, hostFlag ?? config.server.host);
-  logger.info('listening', {
+  const listening = {
     url: `http://${address.host.includes(':') ? `[${address.host}]` : address.host}:${address.port}`,
     provider: config.llm.provider,
     model: config.llm.model,
     version: VERSION,
-  });
+  };
+  if (pretty) process.stdout.write(renderBanner(listening, depth));
+  logger.info('listening', listening);
 
   return new Promise<number>((resolve) => {
     let stopping = false;
