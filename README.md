@@ -52,7 +52,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and set `LLM_API_KEY` to your Groq key, or skip the key and add `--claude` (or `--codex`, `--antigravity`, `--grok`) to your commands. Set `SENDER_NAME`, `SENDER_COMPANY` and `SENDER_OFFER` to describe you and what you sell. Then:
+Open `.env` and set `LLM_API_KEY` to your Groq key, or skip the key and add `--claude` (or `--codex`, `--antigravity`, `--grok`) to your commands. Set `SENDER_NAME`, `SENDER_COMPANY` and `SENDER_OFFER` to describe you and what you sell, plus the optional `SENDER_ROLE`, `SENDER_ADDRESS`, `SENDER_MOBILE`, `SENDER_EMAIL` and `SENDER_WEBSITE` for the signature. Then:
 
 ```sh
 # Research a company in the terminal
@@ -223,6 +223,7 @@ All settings are environment variables, read from `.env` in the working director
 | `LLM_TEMPERATURE` | provider default | 0 to 2 |
 | `LLM_TIMEOUT_SECONDS` | `45` (`240` with a CLI flag) | Per model call, up to 600 |
 | `SENDER_NAME`, `SENDER_COMPANY`, `SENDER_OFFER` | YourAKShaw profile | Who the emails come from and what you sell (offer up to 500 characters) |
+| `SENDER_ROLE`, `SENDER_ADDRESS`, `SENDER_MOBILE`, `SENDER_EMAIL`, `SENDER_WEBSITE` | empty | Signature details: `Name \| Role`, company, address, `Mobile: …`, `email \| website`; empty ones are skipped |
 | `FETCH_MAX_PAGES` | `4` | Pages read per run (1 to 6) |
 | `FETCH_TIMEOUT_SECONDS` | `8` | Per page |
 | `IRISVEIL_ALLOW_PRIVATE_HOSTS` | `false` | **Tests only.** Turns SSRF protection off |
