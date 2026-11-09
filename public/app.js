@@ -10,6 +10,8 @@
   const offerInput = $('offer');
   const senderNameInput = $('sender-name');
   const senderCompanyInput = $('sender-company');
+  const linkedinInput = $('linkedin');
+  const xInput = $('x');
   const submitButton = $('submit');
   const log = $('log');
   const errorBox = $('error');
@@ -342,6 +344,8 @@
           offer: offerInput.value.trim(),
           senderName: senderNameInput.value.trim(),
           senderCompany: senderCompanyInput.value.trim(),
+          linkedin: linkedinInput.value.trim(),
+          x: xInput.value.trim(),
         }),
       });
 
