@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEmail, formatEmailBody, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
+import { checkEmail, checkMix, factMix, formatEmailBody, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
 
 const ids = new Set(['s1', 's2']);
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
@@ -97,5 +97,31 @@ describe('formatEmailBody', () => {
   it('leaves a well-formed body alone apart from the sign-off', () => {
     const raw = 'Hi Priya,\n\nFirst paragraph.\n\nSecond paragraph.';
     assert.equal(formatEmailBody(raw, sender), `${raw}\n\nBest,\nAyush\nYourAKShaw`);
+  });
+});
+
+describe('company and person facts in every draft', () => {
+  const sig = (id: string, category: string, sourceUrl: string) => ({ id, category, claim: '', quote: '', sourceUrl }) as never;
+  const company = sig('s1', 'product', 'https://acme.example/');
+  const linkedin = sig('s2', 'person', 'https://www.linkedin.com/in/cristinajcordova');
+  const x = sig('s3', 'person', 'https://x.com/cjc');
+
+  it('company only: each draft needs a company fact', () => {
+    const mix = factMix({ signals: [company] });
+    assert.deepEqual(checkMix(['s1'], mix, 'e'), []);
+    assert.match(checkMix([], mix, 'e').join(' '), /company fact/);
+  });
+
+  it('company plus one profile: each draft needs both kinds', () => {
+    const mix = factMix({ signals: [company, linkedin] });
+    assert.deepEqual(checkMix(['s1', 's2'], mix, 'e'), []);
+    assert.match(checkMix(['s1'], mix, 'e').join(' '), /\[person\] fact/);
+    assert.match(checkMix(['s2'], mix, 'e').join(' '), /company fact/);
+  });
+
+  it('company plus both profiles: groups person facts by network', () => {
+    const mix = factMix({ signals: [company, linkedin, x] });
+    assert.deepEqual([...mix.profiles.keys()].sort(), ['LinkedIn', 'X']);
+    assert.deepEqual(checkMix(['s1', 's3'], mix, 'e'), []);
   });
 });

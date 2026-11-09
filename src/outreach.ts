@@ -154,8 +154,48 @@ export function checkEmail(email: EmailDraft, validIds: ReadonlySet<string>, ind
   return problems;
 }
 
-function checkAll(emails: EmailDraft[], validIds: ReadonlySet<string>): string[] {
-  const problems = emails.flatMap((email, index) => checkEmail(email, validIds, index));
+/** Which fact ids describe the company and which come from each recipient profile. */
+export interface FactMix {
+  company: ReadonlySet<string>;
+  /** Profile label ("LinkedIn", "X") → ids of person facts quoted from that profile. */
+  profiles: ReadonlyMap<string, ReadonlySet<string>>;
+}
+
+export function factMix(brief: Pick<ResearchBrief, 'signals'>): FactMix {
+  const company = new Set<string>();
+  const profiles = new Map<string, Set<string>>();
+  for (const s of brief.signals) {
+    if (s.category !== 'person') {
+      company.add(s.id);
+      continue;
+    }
+    const host = new URL(s.sourceUrl).hostname;
+    const label = /linkedin\.com$/.test(host) ? 'LinkedIn' : /(^|\.)(x|twitter)\.com$/.test(host) ? 'X' : 'profile';
+    if (!profiles.has(label)) profiles.set(label, new Set());
+    profiles.get(label)!.add(s.id);
+  }
+  return { company, profiles };
+}
+
+/** Every draft blends company facts with person facts when the recipient's profiles were read. */
+export function checkMix(basedOn: readonly string[], mix: FactMix, label: string): string[] {
+  const problems: string[] = [];
+  if (mix.company.size && !basedOn.some((id) => mix.company.has(id))) {
+    problems.push(`${label} must use at least one company fact (${[...mix.company].join(', ')}) and list it in basedOn.`);
+  }
+  const person = [...mix.profiles.values()].flatMap((ids) => [...ids]);
+  if (person.length && !basedOn.some((id) => person.includes(id))) {
+    problems.push(`${label} must also use at least one [person] fact (${person.join(', ')}) and list it in basedOn.`);
+  }
+  return problems;
+}
+
+function checkAll(emails: EmailDraft[], validIds: ReadonlySet<string>, mix: FactMix): string[] {
+  const problems = emails.flatMap((email, index) => [...checkEmail(email, validIds, index), ...checkMix(email.basedOn, mix, `emails[${index}]`)]);
+  const used = new Set(emails.flatMap((email) => email.basedOn));
+  for (const [network, ids] of mix.profiles) {
+    if (![...ids].some((id) => used.has(id))) problems.push(`Use at least one ${network} fact (${[...ids].join(', ')}) across the drafts.`);
+  }
   const subjects = emails.map((email) => email.subject.toLowerCase());
   if (new Set(subjects).size !== subjects.length) problems.push('Each email needs a different subject line.');
   if (emails.length < 3) problems.push(`Write exactly 3 emails (got ${emails.length}).`);
@@ -178,7 +218,9 @@ Hard rules:
 - Mention only facts from the VERIFIED FACTS list. Never invent metrics, customers, funding, news, mutual connections or compliments.
 - Each email lists in "basedOn" the fact ids it relies on (at least one). Never write fact ids (s1, S2, [s3]) in the subject or body: the recipient must not see them.
 - Hypotheses are guesses: phrase them as a question or "I'd guess", never as fact.
-- Facts tagged [person] come from the recipient's public profile. When present, open at least one email with one of them, briefly and professionally (for example their role or a post on a work topic), then tie it to the company. Never sound like you studied their profile closely.
+- Every email is built on the company: each one uses at least one company fact (any tag except [person]).
+- Facts tagged [person] come from the recipient's public LinkedIn or X profile. When any exist, EVERY email also weaves in at least one of them, so each draft is personal and company-specific at once: for example, connect their background or a post on a work topic to the company fact. Across the three drafts use every [person] fact at least once, and draw on each profile that has facts. Keep it brief and professional; never sound like you studied their profile closely.
+- Spread the company facts across the drafts too, so together the three emails use as much of the research as fits.
 - Body: 60 to 130 words. Subject: under 60 characters, specific, no clickbait, no emojis, no ALL CAPS.
 - Plain text only: no links or URLs, no placeholders like [Name], no markdown.
 - Open with the specific fact, connect it to one concrete way ${sender.company} could help, end with one low-friction ask (a reply or a 15-minute call).
@@ -214,10 +256,12 @@ export async function draftOutreach(
   signal?: AbortSignal,
 ): Promise<{ emails: OutreachEmail[]; warnings: string[]; usage: LlmUsage }> {
   const validIds = new Set(brief.signals.map((s) => s.id));
+  const mix = factMix(brief);
+  let impersonal = 0;
   const result = await completeStructured(llm, buildOutreachMessages(brief, sender, recipient), EmailDraftSchema, {
     maxTokens: 2_000,
     signal,
-    check: (value) => checkAll(value.emails, validIds),
+    check: (value) => checkAll(value.emails, validIds, mix),
   });
 
   // After the repair attempt, keep only emails that pass every rule.
@@ -227,11 +271,16 @@ export async function draftOutreach(
   result.value.emails.forEach((raw, index) => {
     const email = { ...raw, subject: stripFactIds(raw.subject, validIds), body: formatEmailBody(stripFactIds(raw.body, validIds), sender) };
     const subjectKey = email.subject.toLowerCase();
-    if (checkEmail(email, validIds, index).length > 0 || seenSubjects.has(subjectKey)) {
+    const mixProblems = checkMix(email.basedOn.filter((id) => validIds.has(id)), mix, 'draft');
+    // A draft with no company fact is not grounded in the company, so it goes; one missing only
+    // the personal touch is kept but reported.
+    const noCompany = mixProblems.some((p) => p.includes('company fact'));
+    if (checkEmail(email, validIds, index).length > 0 || noCompany || seenSubjects.has(subjectKey)) {
       rejected += 1;
       return;
     }
     seenSubjects.add(subjectKey);
+    if (mixProblems.length) impersonal += 1;
     emails.push({
       angle: email.angle || `Angle ${emails.length + 1}`,
       subject: email.subject,
@@ -250,5 +299,6 @@ export async function draftOutreach(
   const warnings: string[] = [];
   if (rejected > 0) warnings.push(`${rejected} draft${rejected > 1 ? 's were' : ' was'} discarded for breaking the grounding or format rules.`);
   if (emails.length < 3) warnings.push(`Only ${emails.length} of 3 drafts passed validation.`);
+  if (impersonal > 0) warnings.push(`${impersonal} draft${impersonal > 1 ? 's do' : ' does'} not use the recipient's profile; review before sending.`);
   return { emails: emails.slice(0, 3), warnings, usage: result.usage };
 }

@@ -119,7 +119,7 @@ iris serve [--port N] [--host H] Start the web app
 
 ### Researching the person, not just the company
 
-Pass `--linkedin`, `--x`, or both (in the web app, fill the optional "Their LinkedIn" and "Their X" fields). Iris reads each public profile alongside the company site and keeps 1 to 3 professional facts about the person, such as their role, past companies or posts on work topics, under the same rule: every fact needs a verbatim quote from the profile page. At least one draft then opens with one of them. Personal details (family, health, politics, religion, location) are never used.
+Pass `--linkedin`, `--x`, or both (in the web app, fill the optional "Their LinkedIn" and "Their X" fields). Iris reads each public profile alongside the company site and keeps 1 to 3 professional facts about the person, such as their role, past companies or posts on work topics, under the same rule: every fact needs a verbatim quote from the profile page. Every draft is still built on company facts; when profile facts exist, every draft also weaves in at least one of them, and across the three drafts each profile that was read gets used. Iris checks this and asks the model to rewrite drafts that miss it. Personal details (family, health, politics, religion, location) are never used.
 
 LinkedIn and X often hide profiles from logged-out visitors. When a profile can't be read, Iris says so in the result's warnings and writes the drafts from company research alone; the run never fails because of a profile.
 
