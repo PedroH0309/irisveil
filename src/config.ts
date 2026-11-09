@@ -109,9 +109,9 @@ export interface IrisConfig {
 
 export const DEFAULT_SENDER: SenderProfile = {
   name: 'Ayush',
-  company: 'NayaManas',
+  company: 'YourAKShaw',
   offer:
-    'NayaManas designs and ships AI agents and workflow automation for founder-led teams: lead research and outreach, support triage, and internal knowledge assistants.',
+    'YourAKShaw designs and ships AI agents and workflow automation for founder-led teams: lead research and outreach, support triage, and internal knowledge assistants.',
 };
 
 export const LIMITS = {

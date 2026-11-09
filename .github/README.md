@@ -15,7 +15,7 @@ Paste a company's website. Iris reads it, keeps only the claims it can quote wor
 
 [Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Contribute](CONTRIBUTING.md) · [Get help](SUPPORT.md)
 
-Built by [NayaManas](https://github.com/YourAKShaw), an AI agents and automation studio for founder-led teams.
+Built by [YourAKShaw](https://github.com/YourAKShaw), an AI agents and automation studio for founder-led teams.
 
 </div>
 
@@ -152,7 +152,7 @@ All settings are environment variables, read from `.env` in the working director
 | `LLM_REASONING_EFFORT` | `low` (Groq, Gemini) | `off` to omit, or `none`/`minimal`/`low`/`medium`/`high` |
 | `LLM_TEMPERATURE` | provider default | 0 to 2 |
 | `LLM_TIMEOUT_SECONDS` | `45` | Per model call |
-| `SENDER_NAME`, `SENDER_COMPANY`, `SENDER_OFFER` | NayaManas profile | Who the emails come from and what you sell (offer up to 500 characters) |
+| `SENDER_NAME`, `SENDER_COMPANY`, `SENDER_OFFER` | YourAKShaw profile | Who the emails come from and what you sell (offer up to 500 characters) |
 | `FETCH_MAX_PAGES` | `4` | Pages read per run (1 to 6) |
 | `FETCH_TIMEOUT_SECONDS` | `8` | Per page |
 | `IRIS_ALLOW_PRIVATE_HOSTS` | `false` | **Tests only.** Turns SSRF protection off |

@@ -202,10 +202,10 @@ const BODY_A = `Hi Priya,
 
 I saw Northwind is hiring 12 field engineers across Texas and Ohio this quarter. Growing a field team that fast usually means a lot of manual scheduling, site prep checklists and handoffs that slow every new retrofit down.
 
-NayaManas builds AI agents that take that coordination work off the team, from scheduling installs to drafting site reports. Would a 15-minute call next week be useful to see whether it fits?
+YourAKShaw builds AI agents that take that coordination work off the team, from scheduling installs to drafting site reports. Would a 15-minute call next week be useful to see whether it fits?
 
 Ayush
-NayaManas`;
+YourAKShaw`;
 
 const BODY_B = `Hi Priya,
 
@@ -214,16 +214,16 @@ Retrofitting existing forklifts in under 48 hours is a sharp promise, and Harbor
 We build internal knowledge assistants that give field engineers instant, cited answers from your own runbooks. Open to a quick reply on whether that would help your rollout?
 
 Ayush
-NayaManas`;
+YourAKShaw`;
 
 const BODY_C = `Hi Priya,
 
 With pricing per forklift per month and no upfront hardware cost, I'd guess each new site has to show payback quickly. That makes clear, early reporting for customers like Harbor Foods unusually valuable.
 
-NayaManas automates that kind of reporting with AI agents that pull operating data into a weekly summary your customers actually read. Worth a 15-minute call to compare notes?
+YourAKShaw automates that kind of reporting with AI agents that pull operating data into a weekly summary your customers actually read. Worth a 15-minute call to compare notes?
 
 Ayush
-NayaManas`;
+YourAKShaw`;
 
 export function outreachReply(options: { injectLink?: boolean } = {}) {
   return {

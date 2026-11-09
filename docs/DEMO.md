@@ -31,7 +31,7 @@ Upload the video to the post itself, and put the live URL and the repo at the en
 >
 > I built Iris to fix that: paste a company's website, and it drafts three first-touch emails using only facts it can quote word for word from that site. Every quote is checked in code, and anything it can't find is dropped, with the receipts shown.
 >
-> A NayaManas experiment. Open source, and it runs on free tiers.
+> A YourAKShaw experiment. Open source, and it runs on free tiers.
 >
 > Try it: <your onrender.com URL>
 > Code: https://github.com/YourAKShaw/iris

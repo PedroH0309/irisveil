@@ -25,7 +25,7 @@ services:
       - key: SENDER_NAME
         value: Ayush
       - key: SENDER_COMPANY
-        value: NayaManas
+        value: YourAKShaw
       - key: DAILY_RUN_LIMIT
         value: "25"
       - key: RATE_LIMIT_PER_IP

@@ -102,7 +102,7 @@ export function renderMasthead(depth: ColorDepth, version: string): string[] {
     ...word,
     '',
     s.italic(s.fg(BRAND.lilac, 'Cold emails built on facts you can check.')),
-    s.italic(s.dim(`by NayaManas  ·  v${version}`)),
+    s.italic(s.dim(`by YourAKShaw  ·  v${version}`)),
     '',
   ];
   const height = Math.max(logo.length, right.length);
