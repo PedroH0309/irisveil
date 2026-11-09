@@ -4,7 +4,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { loadConfig, loadDotEnv, type IrisConfig } from './config.js';
 import { IrisError, isIrisError, toIrisError } from './errors.js';
-import { createLlmClient } from './llm.js';
+import { createLlmClient, type LlmClient } from './llm.js';
+import { createAgentClient, LOCAL_AGENTS, type LocalAgent } from './local-agent.js';
 import { parseRunInput, runIris } from './pipeline.js';
 import { renderMarkdown, renderTerminal, safeText } from './format.js';
 import { createIrisServer, createJsonLogger } from './server.js';
@@ -28,6 +29,10 @@ Options
       --out <file>          Also save the result (.md for Markdown, .json for JSON)
       --json                Print the full result as JSON instead of the formatted view
   -q, --quiet               Hide progress messages
+      --claude              Use your signed-in Claude Code CLI instead of an API key
+      --codex               Use your signed-in Codex CLI instead of an API key
+      --antigravity         Use your signed-in Antigravity CLI (agy) instead of an API key
+      --grok                Use your signed-in Grok CLI instead of an API key
   -p, --port <number>       Port for "serve" (overrides PORT)
       --host <address>      Bind address for "serve" (overrides HOST)
   -h, --help                Show this help
@@ -39,9 +44,11 @@ Examples
   iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf
   iris linear.app --to "Cristina Cordova" --x ~/Downloads/cjc.md
   iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
+  iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md --claude
   iris serve --port 8080
+  iris serve --claude
 
-Configuration lives in .env (see .env.example). Docs: https://github.com/YourAKShaw/iris`;
+Configuration lives in .env (see .env.example). With no API key in .env, pass one of the CLI flags. Docs: https://github.com/YourAKShaw/iris`;
 
 const EXIT = { ok: 0, failure: 1, usage: 2 } as const;
 
@@ -92,6 +99,10 @@ async function main(argv: string[]): Promise<number> {
         host: { type: 'string' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
+        claude: { type: 'boolean' },
+        codex: { type: 'boolean' },
+        antigravity: { type: 'boolean' },
+        grok: { type: 'boolean' },
       },
     });
   } catch (error) {
@@ -119,16 +130,25 @@ async function main(argv: string[]): Promise<number> {
     return EXIT.usage;
   }
 
+  const agents = LOCAL_AGENTS.filter((agent) => values[agent]);
+  if (agents.length > 1) {
+    process.stderr.write(`Choose one of ${agents.map((a) => `--${a}`).join(', ')}, not several.\n`);
+    return EXIT.usage;
+  }
+  const agent: LocalAgent | undefined = agents[0];
+
   let config: IrisConfig;
+  let llm: LlmClient;
   try {
     loadDotEnv();
-    config = loadConfig();
+    config = loadConfig(process.env, { localAgent: agent !== undefined });
+    llm = agent ? createAgentClient(agent, { timeoutMs: config.llm.timeoutMs }) : createLlmClient(config.llm);
   } catch (error) {
     printError(error);
     return EXIT.usage;
   }
 
-  if (command === 'serve') return serve(config, values.port, values.host);
+  if (command === 'serve') return serve(config, llm, values.port, values.host);
 
   let input;
   try {
@@ -147,7 +167,7 @@ async function main(argv: string[]): Promise<number> {
   if (fancy) {
     process.stderr.write(
       renderRunHeader(
-        { target: input.url, recipient: input.recipient ?? undefined, linkedin: values.linkedin, x: values.x, provider: config.llm.provider, model: config.llm.model, version: VERSION },
+        { target: input.url, recipient: input.recipient ?? undefined, linkedin: values.linkedin, x: values.x, provider: llm.provider, model: llm.model, version: VERSION },
         errDepth,
       ),
     );
@@ -159,7 +179,7 @@ async function main(argv: string[]): Promise<number> {
   try {
     const result = await runIris(input, {
       config,
-      llm: createLlmClient(config.llm),
+      llm,
       signal: controller.signal,
       onProgress: values.quiet
         ? undefined
@@ -189,7 +209,7 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-async function serve(config: IrisConfig, portFlag: string | undefined, hostFlag: string | undefined): Promise<number> {
+async function serve(config: IrisConfig, llm: LlmClient, portFlag: string | undefined, hostFlag: string | undefined): Promise<number> {
   const port = portFlag === undefined ? config.server.port : Number(portFlag);
   if (!Number.isInteger(port) || port < 0 || port > 65_535) {
     process.stderr.write(`Invalid --port: ${portFlag}\n`);
@@ -198,12 +218,12 @@ async function serve(config: IrisConfig, portFlag: string | undefined, hostFlag:
   const pretty = wantsPrettyLogs(process.stdout);
   const depth = colorDepth(process.stdout);
   const logger = pretty ? createPrettyLogger({ depth, animate: process.stdout.isTTY ? process.stdout : undefined }) : createJsonLogger();
-  const app = await createIrisServer({ config, llm: createLlmClient(config.llm), logger });
+  const app = await createIrisServer({ config, llm, logger });
   const address = await app.listen(port, hostFlag ?? config.server.host);
   const listening = {
     url: `http://${address.host.includes(':') ? `[${address.host}]` : address.host}:${address.port}`,
-    provider: config.llm.provider,
-    model: config.llm.model,
+    provider: llm.provider,
+    model: llm.model,
     version: VERSION,
   };
   if (pretty) process.stdout.write(renderBanner(listening, depth));
