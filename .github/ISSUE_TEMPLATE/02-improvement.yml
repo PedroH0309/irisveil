@@ -16,7 +16,7 @@ body:
     id: proposal
     attributes:
       label: Proposed change
-      description: The behavior you want, and which parts of Iris it touches (fetching, research, verification, drafting, CLI, web app).
+      description: The behavior you want, and which parts of IrisVeil it touches (fetching, research, verification, drafting, CLI, web app).
     validations:
       required: true
   - type: textarea

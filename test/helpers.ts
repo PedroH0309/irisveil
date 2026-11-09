@@ -1,6 +1,6 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { loadConfig, type IrisConfig } from '../src/config.js';
+import { loadConfig, type IrisVeilConfig } from '../src/config.js';
 
 /** Test doubles that speak real HTTP, so the production fetcher and LLM client are exercised. */
 
@@ -71,12 +71,12 @@ export async function startSite(pages: Record<string, string | FixturePage>): Pr
   return { origin, hits, close: () => closeServer(server) };
 }
 
-export function testConfig(llmUrl: string, env: Record<string, string> = {}): IrisConfig {
+export function testConfig(llmUrl: string, env: Record<string, string> = {}): IrisVeilConfig {
   return loadConfig({
     LLM_PROVIDER: 'custom',
     LLM_BASE_URL: llmUrl,
     LLM_MODEL: 'fake-model',
-    IRIS_ALLOW_PRIVATE_HOSTS: 'true',
+    IRISVEIL_ALLOW_PRIVATE_HOSTS: 'true',
     ...env,
   });
 }

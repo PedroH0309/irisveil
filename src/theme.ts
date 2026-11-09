@@ -1,7 +1,7 @@
 /**
- * Shared terminal look for Iris: brand colours, ANSI styling that degrades from truecolor to
+ * Shared terminal look for IrisVeil: brand colours, ANSI styling that degrades from truecolor to
  * 256 colours to plain text, and the masthead (the favicon rasterized into half-block pixels
- * beside the wordmark). Used by the CLI run output and the `iris serve` banner.
+ * beside the wordmark). Used by the CLI run output and the `irisveil serve` banner.
  */
 
 export type Rgb = readonly [number, number, number];
@@ -83,7 +83,8 @@ function renderLogo(s: Style, size: number): string[] {
   return rows;
 }
 
-const WORDMARK = [
+/** "IRISVEIL" in ANSI Shadow letters, drawn in two tones: IRIS and VEIL. */
+const WORDMARK_IRIS = [
   '██╗██████╗ ██╗███████╗',
   '██║██╔══██╗██║██╔════╝',
   '██║██████╔╝██║███████╗',
@@ -92,11 +93,25 @@ const WORDMARK = [
   '╚═╝╚═╝  ╚═╝╚═╝╚══════╝',
 ];
 
+const WORDMARK_VEIL = [
+  '██╗   ██╗███████╗██╗██╗     ',
+  '██║   ██║██╔════╝██║██║     ',
+  '██║   ██║█████╗  ██║██║     ',
+  '╚██╗ ██╔╝██╔══╝  ██║██║     ',
+  ' ╚████╔╝ ███████╗██║███████╗',
+  '  ╚═══╝  ╚══════╝╚═╝╚══════╝',
+];
+
 /** Logo, wordmark, tagline and byline, as lines ready to print. */
 export function renderMasthead(depth: ColorDepth, version: string): string[] {
   const s = style(depth);
   const logo = depth === 'none' ? [] : renderLogo(s, 24);
-  const word = WORDMARK.map((line, i) => s.bold(s.fg(mix(BRAND.lilac, BRAND.violet, i / (WORDMARK.length - 1)), line)));
+  const last = WORDMARK_IRIS.length - 1;
+  const word = WORDMARK_IRIS.map(
+    (line, i) =>
+      s.bold(s.fg(mix(BRAND.lilac, BRAND.violet, i / last), line)) +
+      s.bold(s.fg(mix(BRAND.glint, BRAND.lilac, i / last), WORDMARK_VEIL[i]!)),
+  );
   const right = [
     '',
     ...word,

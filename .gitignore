@@ -18,9 +18,9 @@ coverage/
 .env.*
 !.env.example
 
-# Iris output saved with --out
+# IrisVeil output saved with --out
 *-brief.md
-*.iris.json
+*.irisveil.json
 
 # Operating-system files
 .DS_Store

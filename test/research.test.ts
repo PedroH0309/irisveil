@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { ResearchDraftSchema, normalizeForMatch, quoteAppearsIn, verifyResearch } from '../src/research.js';
-import { IrisError } from '../src/errors.js';
+import { IrisVeilError } from '../src/errors.js';
 import type { SourcePage } from '../src/site.js';
 import { researchReply } from './helpers.js';
 
@@ -83,7 +83,7 @@ describe('verifyResearch', () => {
       company: { name: 'X', oneLiner: 'Y' },
       signals: [{ id: 's1', category: 'other', claim: 'Made up', quote: 'This sentence does not appear anywhere on the site.', sourceUrl: '' }],
     });
-    assert.throws(() => verifyResearch(invented, pages), (error: unknown) => error instanceof IrisError && error.code === 'INSUFFICIENT_EVIDENCE');
+    assert.throws(() => verifyResearch(invented, pages), (error: unknown) => error instanceof IrisVeilError && error.code === 'INSUFFICIENT_EVIDENCE');
   });
 
   it('drops duplicate quotes', () => {

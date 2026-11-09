@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Iris fails, crashes, or produces wrong output.
+description: Something in IrisVeil fails, crashes, or produces wrong output.
 labels: [bug]
 body:
   - type: markdown
@@ -11,8 +11,8 @@ body:
     attributes:
       label: Where did it happen?
       options:
-        - CLI (iris <url>)
-        - Web app (iris serve or a deployment)
+        - CLI (irisveil <url>)
+        - Web app (irisveil serve or a deployment)
         - Deployment / configuration
         - Tests or CI
     validations:
@@ -22,7 +22,7 @@ body:
     attributes:
       label: Steps to reproduce
       description: The exact command or the inputs you used. Include the target website if it is public.
-      placeholder: iris example.com --to "Name, Role"
+      placeholder: irisveil example.com --to "Name, Role"
     validations:
       required: true
   - type: textarea
@@ -35,13 +35,13 @@ body:
     id: actual
     attributes:
       label: Actual behavior
-      description: Include the error message. For CLI runs, `IRIS_DEBUG=1` prints operator detail; check it for secrets before pasting.
+      description: Include the error message. For CLI runs, `IRISVEIL_DEBUG=1` prints operator detail; check it for secrets before pasting.
     validations:
       required: true
   - type: textarea
     id: environment
     attributes:
       label: Environment
-      description: Iris version (`iris --version` or commit), Node.js version, OS, LLM_PROVIDER and LLM_MODEL.
+      description: IrisVeil version (`irisveil --version` or commit), Node.js version, OS, LLM_PROVIDER and LLM_MODEL.
     validations:
       required: true

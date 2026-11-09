@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { IrisError, toIrisError } from './errors.js';
-import { LIMITS, type IrisConfig } from './config.js';
+import { IrisVeilError, toIrisVeilError } from './errors.js';
+import { LIMITS, type IrisVeilConfig } from './config.js';
 import { crawlSite } from './site.js';
 import { researchCompany, type CompanyProfile, type DroppedClaim, type Hypothesis, type Signal } from './research.js';
 import { draftOutreach, parseRecipient, type OutreachEmail } from './outreach.js';
@@ -27,7 +27,7 @@ export interface ProgressEvent {
   message: string;
 }
 
-export interface IrisResult {
+export interface IrisVeilResult {
   schemaVersion: 1;
   generatedAt: string;
   input: { url: string; recipient: string | null; offer: string; senderName: string; senderCompany: string; linkedin: string | null; x: string | null };
@@ -51,7 +51,7 @@ export interface IrisResult {
 }
 
 export interface RunDeps {
-  config: IrisConfig;
+  config: IrisVeilConfig;
   llm: LlmClient;
   onProgress?: ((event: ProgressEvent) => void) | undefined;
   signal?: AbortSignal | undefined;
@@ -107,7 +107,7 @@ const RunInputSchema = z.object({
 export function parseRunInput(raw: unknown): RunInput {
   const parsed = RunInputSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new IrisError('INVALID_INPUT', parsed.error.issues[0]?.message ?? 'Invalid input.');
+    throw new IrisVeilError('INVALID_INPUT', parsed.error.issues[0]?.message ?? 'Invalid input.');
   }
   let url = parsed.data.url;
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = `https://${url}`;
@@ -115,10 +115,10 @@ export function parseRunInput(raw: unknown): RunInput {
   try {
     normalized = new URL(url);
   } catch {
-    throw new IrisError('INVALID_INPUT', 'That does not look like a website address.');
+    throw new IrisVeilError('INVALID_INPUT', 'That does not look like a website address.');
   }
   if (normalized.protocol !== 'http:' && normalized.protocol !== 'https:') {
-    throw new IrisError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
+    throw new IrisVeilError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
   }
   normalized.hash = '';
   const { recipient, offer, senderName, senderCompany, linkedin, x } = parsed.data;
@@ -126,7 +126,7 @@ export function parseRunInput(raw: unknown): RunInput {
 }
 
 /** Fetch → research → verify → draft. One run makes two LLM calls (plus at most one repair each). */
-export async function runIris(input: RunInput, deps: RunDeps): Promise<IrisResult> {
+export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisVeilResult> {
   const { config, llm } = deps;
   const startedAt = Date.now();
   const emit = (stage: Stage, message: string) => deps.onProgress?.({ stage, message });
@@ -204,8 +204,8 @@ export async function runIris(input: RunInput, deps: RunDeps): Promise<IrisResul
     };
   } catch (error) {
     if (deadline.aborted && !deps.signal?.aborted) {
-      throw new IrisError('LLM_TIMEOUT', `The run took longer than ${Math.round(config.runTimeoutMs / 1000)} seconds and was stopped.`);
+      throw new IrisVeilError('LLM_TIMEOUT', `The run took longer than ${Math.round(config.runTimeoutMs / 1000)} seconds and was stopped.`);
     }
-    throw toIrisError(error);
+    throw toIrisVeilError(error);
   }
 }

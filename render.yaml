@@ -1,9 +1,9 @@
-# Render Blueprint: deploys the Iris web app on Render's free plan.
+# Render Blueprint: deploys the IrisVeil web app on Render's free plan.
 # Render prompts for LLM_API_KEY when you create the Blueprint (sync: false keeps it out of git).
 # Free instances sleep after 15 minutes without traffic and take about a minute to wake.
 services:
   - type: web
-    name: iris
+    name: irisveil
     runtime: node
     plan: free
     region: singapore

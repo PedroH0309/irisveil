@@ -2,7 +2,7 @@ import { safeText } from './format.js';
 import { BRAND, mix, style, type ColorDepth, type Rgb } from './theme.js';
 
 /**
- * The live loader shown while Iris works: a pulsing iris mark, a row of sparkles that twinkle
+ * The live loader shown while IrisVeil works: a pulsing iris mark, a row of sparkles that twinkle
  * in a violet-to-gold wave, and the current step in italics with a soft light sweeping across it.
  * It redraws one line in place, so other output goes through `print` to land above it.
  */

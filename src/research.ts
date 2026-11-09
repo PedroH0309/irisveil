@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IrisError } from './errors.js';
+import { IrisVeilError } from './errors.js';
 import { completeStructured, type ChatMessage, type LlmClient, type LlmUsage } from './llm.js';
 import type { SenderProfile } from './config.js';
 import type { SourcePage } from './site.js';
@@ -93,7 +93,7 @@ export interface ResearchBrief {
   proposedSignals: number;
 }
 
-const SYSTEM_PROMPT = `You are Iris, a B2B research analyst. You read a company's own website and extract facts a salesperson can safely reference in a first email.
+const SYSTEM_PROMPT = `You are IrisVeil, a B2B research analyst. You read a company's own website and extract facts a salesperson can safely reference in a first email.
 
 Rules:
 - Use ONLY the website content provided by the user. Do not add outside knowledge, even if you recognise the company.
@@ -220,9 +220,9 @@ export function verifyResearch(draft: ResearchDraft, pages: SourcePage[]): Resea
   }
 
   if (signals.length === 0) {
-    throw new IrisError(
+    throw new IrisVeilError(
       'INSUFFICIENT_EVIDENCE',
-      'Iris could not verify any facts from that website, so it will not draft emails. Try the company homepage or another page with more text.',
+      'IrisVeil could not verify any facts from that website, so it will not draft emails. Try the company homepage or another page with more text.',
       { detail: `${dropped.length} proposed signals failed verification` },
     );
   }

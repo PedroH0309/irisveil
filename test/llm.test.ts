@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { z } from 'zod';
 import { completeStructured, createLlmClient, parseJsonObject, type LlmClient } from '../src/llm.js';
 import { loadConfig } from '../src/config.js';
-import { IrisError } from '../src/errors.js';
+import { IrisVeilError } from '../src/errors.js';
 
 type Call = { url: string; init: RequestInit; body: Record<string, unknown> };
 
@@ -47,7 +47,7 @@ describe('createLlmClient', () => {
   it('maps 401 to LLM_AUTH without retrying', async () => {
     const { impl, calls } = fakeFetch([fail(401, 'Invalid API Key')]);
     const client = createLlmClient(groq.llm, impl, noSleep);
-    await assert.rejects(client.complete([], { maxTokens: 1 }), (e: unknown) => e instanceof IrisError && e.code === 'LLM_AUTH');
+    await assert.rejects(client.complete([], { maxTokens: 1 }), (e: unknown) => e instanceof IrisVeilError && e.code === 'LLM_AUTH');
     assert.equal(calls.length, 1);
   });
 
@@ -62,7 +62,7 @@ describe('createLlmClient', () => {
     const { impl, calls } = fakeFetch([fail(429, 'Rate limit reached for tokens per day (TPD). Please try again in 7m12s.', { 'retry-after': '432' })]);
     const client = createLlmClient(groq.llm, impl, noSleep);
     await assert.rejects(client.complete([], { maxTokens: 1 }), (e: unknown) => {
-      assert.ok(e instanceof IrisError);
+      assert.ok(e instanceof IrisVeilError);
       assert.equal(e.code, 'LLM_RATE_LIMITED');
       assert.equal(e.retryAfterSeconds, 432);
       assert.match(e.message, /8 minutes/);
@@ -94,7 +94,7 @@ describe('createLlmClient', () => {
       throw new TypeError('fetch failed');
     }, noSleep);
     await assert.rejects(client.complete([], { maxTokens: 1 }), (e: unknown) => {
-      assert.ok(e instanceof IrisError);
+      assert.ok(e instanceof IrisVeilError);
       assert.equal(e.code, 'LLM_UNAVAILABLE');
       assert.doesNotMatch(`${e.message} ${e.detail}`, /gsk_test_key/);
       return true;
@@ -111,7 +111,7 @@ describe('parseJsonObject', () => {
     assert.deepEqual(parseJsonObject(`${String.fromCharCode(0xfeff)}{"a":1}`), { a: 1 });
   });
   it('throws LLM_BAD_OUTPUT on garbage', () => {
-    assert.throws(() => parseJsonObject('no json here'), (e: unknown) => e instanceof IrisError && e.code === 'LLM_BAD_OUTPUT');
+    assert.throws(() => parseJsonObject('no json here'), (e: unknown) => e instanceof IrisVeilError && e.code === 'LLM_BAD_OUTPUT');
   });
 });
 
@@ -144,7 +144,7 @@ describe('completeStructured', () => {
 
   it('gives up after one failed repair', async () => {
     const client = scripted(['nope', 'still nope']);
-    await assert.rejects(completeStructured(client, [], schema, { maxTokens: 10 }), (e: unknown) => e instanceof IrisError && e.code === 'LLM_BAD_OUTPUT');
+    await assert.rejects(completeStructured(client, [], schema, { maxTokens: 10 }), (e: unknown) => e instanceof IrisVeilError && e.code === 'LLM_BAD_OUTPUT');
   });
 
   it('returns remaining semantic problems after the repair for the caller to handle', async () => {

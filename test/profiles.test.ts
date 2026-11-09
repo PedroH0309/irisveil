@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readProfileFile } from '../src/profiles.js';
 import { parseRunInput } from '../src/pipeline.js';
-import { IrisError } from '../src/errors.js';
+import { IrisVeilError } from '../src/errors.js';
 
 /** A minimal one-page PDF with one line of text per entry, like LinkedIn's "Save to PDF". */
 function makePdf(lines: string[]): Uint8Array {
@@ -26,7 +26,7 @@ function makePdf(lines: string[]): Uint8Array {
   return new TextEncoder().encode(body);
 }
 
-const isInvalid = (e: unknown) => e instanceof IrisError && e.code === 'INVALID_INPUT';
+const isInvalid = (e: unknown) => e instanceof IrisVeilError && e.code === 'INVALID_INPUT';
 
 describe('readProfileFile', () => {
   it('reads the text of a LinkedIn PDF', async () => {

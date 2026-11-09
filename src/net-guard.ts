@@ -1,6 +1,6 @@
 import { BlockList, isIP, type LookupFunction } from 'node:net';
 import { promises as dns, type LookupAddress } from 'node:dns';
-import { IrisError } from './errors.js';
+import { IrisVeilError } from './errors.js';
 
 /**
  * SSRF protection for user-supplied URLs.
@@ -68,21 +68,21 @@ export interface UrlPolicy {
 /** Fast pre-flight checks on a URL. The connect-time DNS check is still authoritative. */
 export function assertFetchableUrl(url: URL, policy: UrlPolicy): void {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new IrisError('URL_BLOCKED', 'Only http:// and https:// websites are supported.');
+    throw new IrisVeilError('URL_BLOCKED', 'Only http:// and https:// websites are supported.');
   }
   if (url.username || url.password) {
-    throw new IrisError('URL_BLOCKED', 'URLs that contain credentials are not allowed.');
+    throw new IrisVeilError('URL_BLOCKED', 'URLs that contain credentials are not allowed.');
   }
   if (policy.allowPrivateHosts) return;
 
   if (url.port && url.port !== '80' && url.port !== '443') {
-    throw new IrisError('URL_BLOCKED', 'Only standard web ports (80 and 443) are allowed.');
+    throw new IrisVeilError('URL_BLOCKED', 'Only standard web ports (80 and 443) are allowed.');
   }
 
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
   if (isIP(host) !== 0) {
     if (isBlockedAddress(host)) {
-      throw new IrisError('URL_BLOCKED', 'That address is on a private or reserved network.');
+      throw new IrisVeilError('URL_BLOCKED', 'That address is on a private or reserved network.');
     }
     return;
   }
@@ -91,7 +91,7 @@ export function assertFetchableUrl(url: URL, policy: UrlPolicy): void {
     !host.includes('.') ||
     BLOCKED_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix))
   ) {
-    throw new IrisError('URL_BLOCKED', 'That host is not a public website.');
+    throw new IrisVeilError('URL_BLOCKED', 'That host is not a public website.');
   }
 }
 
@@ -118,7 +118,7 @@ export function createGuardedLookup(policy: UrlPolicy, resolver: Resolver = syst
         }
         if (!policy.allowPrivateHosts && candidates.some((a) => isBlockedAddress(a.address))) {
           callback(
-            new IrisError('URL_BLOCKED', 'That website resolves to a private or reserved network address.'),
+            new IrisVeilError('URL_BLOCKED', 'That website resolves to a private or reserved network address.'),
             '',
             0,
           );

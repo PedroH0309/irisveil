@@ -5,14 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAgentClient, flattenMessages } from '../src/local-agent.js';
 import { loadConfig } from '../src/config.js';
-import { IrisError } from '../src/errors.js';
+import { IrisVeilError } from '../src/errors.js';
 
 describe('local agent CLIs', () => {
   let bin: string;
   const originalPath = process.env.PATH;
 
   before(async () => {
-    bin = await mkdtemp(join(tmpdir(), 'iris-fake-bin-'));
+    bin = await mkdtemp(join(tmpdir(), 'irisveil-fake-bin-'));
     // A stand-in for `claude -p <prompt> ...`: echoes its argument count and whether tools are off.
     await writeFile(
       join(bin, 'claude'),
@@ -47,7 +47,7 @@ describe('local agent CLIs', () => {
 
   it('reports a failing, slow or missing CLI clearly', async () => {
     const client = createAgentClient('claude', { timeoutMs: 1_000 });
-    const isUnavailable = (e: unknown) => e instanceof IrisError && e.code === 'LLM_UNAVAILABLE';
+    const isUnavailable = (e: unknown) => e instanceof IrisVeilError && e.code === 'LLM_UNAVAILABLE';
     await assert.rejects(client.complete([{ role: 'system', content: 'fail' }], { maxTokens: 1 }), isUnavailable);
     await assert.rejects(client.complete([{ role: 'system', content: 'slow' }], { maxTokens: 1 }), /did not answer within 1 seconds/);
     process.env.PATH = bin; // only the fake claude exists, so `grok` is missing

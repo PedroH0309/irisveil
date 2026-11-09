@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🤝 Contributing to Iris
+# 🤝 Contributing to IrisVeil
 
 **Help make outreach research more accurate, more useful, and harder to fool.**
 
-[![CI](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml/badge.svg)](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml)
+[![CI](https://github.com/YourAKShaw/irisveil/actions/workflows/ci.yml/badge.svg)](https://github.com/YourAKShaw/irisveil/actions/workflows/ci.yml)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](../.nvmrc)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-5B3FD6?style=flat-square)](../LICENSE)
 
@@ -16,7 +16,7 @@
 
 ## Start with the outcome
 
-Iris has one promise: every fact an email uses was quoted, word for word, from the prospect's own website. Contributions should make that promise stronger, make the drafts more useful, or make Iris easier to run for free.
+IrisVeil has one promise: every fact an email uses was quoted, word for word, from the prospect's own website. Contributions should make that promise stronger, make the drafts more useful, or make IrisVeil easier to run for free.
 
 Useful contributions include:
 
@@ -31,7 +31,7 @@ Useful contributions include:
 | Contribution | Where to begin |
 | :--- | :--- |
 | Small fix or doc correction | Open a pull request with the problem and how you verified the fix. |
-| Bug, bad output on a real site, or doc issue | Search existing issues, then use the matching [issue form](https://github.com/YourAKShaw/iris/issues/new/choose). |
+| Bug, bad output on a real site, or doc issue | Search existing issues, then use the matching [issue form](https://github.com/YourAKShaw/irisveil/issues/new/choose). |
 | New feature, new dependency, or a change to the result JSON | Open an issue first with the use case, trade-offs and proposed scope. |
 | Security vulnerability | Report it privately; see [SECURITY.md](../SECURITY.md). |
 | Usage question | Follow the [support guide](SUPPORT.md). |
@@ -47,8 +47,8 @@ The CLA keeps IrisVeil open source under the AGPL-3.0 and lets the maintainer al
 Requirements: **Node.js 22.12 or later** (`.nvmrc` pins 22) and npm.
 
 ```sh
-git clone https://github.com/YourAKShaw/iris.git
-cd iris
+git clone https://github.com/YourAKShaw/irisveil.git
+cd irisveil
 npm install
 cp .env.example .env        # add a free LLM_API_KEY to try real runs
 npm run check               # type-check, lint, tests

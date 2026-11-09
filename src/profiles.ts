@@ -1,5 +1,5 @@
 import { extractText, getDocumentProxy } from 'unpdf';
-import { IrisError } from './errors.js';
+import { IrisVeilError } from './errors.js';
 import type { SourcePage } from './site.js';
 
 /**
@@ -41,7 +41,7 @@ async function pdfText(bytes: Uint8Array): Promise<string> {
     await pdf.destroy();
     return text;
   } catch {
-    throw new IrisError('INVALID_INPUT', 'That LinkedIn PDF could not be read. Download it again with More → Save to PDF on the profile.');
+    throw new IrisVeilError('INVALID_INPUT', 'That LinkedIn PDF could not be read. Download it again with More → Save to PDF on the profile.');
   }
 }
 
@@ -58,20 +58,20 @@ function tidy(text: string): string {
 /** Reads one profile file into a source page. Throws INVALID_INPUT for the wrong kind of file. */
 export async function readProfileFile(network: ProfileNetwork, file: ProfileFile): Promise<ProfilePage> {
   const { bytes } = file;
-  if (bytes.length === 0) throw new IrisError('INVALID_INPUT', `The ${PROFILE_FILE[network]} is empty.`);
-  if (bytes.length > PROFILE_FILE_MAX_BYTES) throw new IrisError('INVALID_INPUT', `The ${PROFILE_FILE[network]} must be 2 MB or smaller.`);
+  if (bytes.length === 0) throw new IrisVeilError('INVALID_INPUT', `The ${PROFILE_FILE[network]} is empty.`);
+  if (bytes.length > PROFILE_FILE_MAX_BYTES) throw new IrisVeilError('INVALID_INPUT', `The ${PROFILE_FILE[network]} must be 2 MB or smaller.`);
 
   let text: string;
   if (network === 'linkedin') {
-    if (!isPdf(bytes)) throw new IrisError('INVALID_INPUT', 'The LinkedIn file must be the PDF from More → Save to PDF on the profile.');
+    if (!isPdf(bytes)) throw new IrisVeilError('INVALID_INPUT', 'The LinkedIn file must be the PDF from More → Save to PDF on the profile.');
     text = await pdfText(bytes);
   } else {
-    if (isPdf(bytes) || bytes.includes(0)) throw new IrisError('INVALID_INPUT', 'The X file must be the Markdown (.md) export from Grok.');
+    if (isPdf(bytes) || bytes.includes(0)) throw new IrisVeilError('INVALID_INPUT', 'The X file must be the Markdown (.md) export from Grok.');
     text = new TextDecoder('utf-8').decode(bytes);
   }
 
   const clean = tidy(text);
-  if (clean.length < 40) throw new IrisError('INVALID_INPUT', `The ${PROFILE_FILE[network]} has almost no readable text.`);
+  if (clean.length < 40) throw new IrisVeilError('INVALID_INPUT', `The ${PROFILE_FILE[network]} has almost no readable text.`);
   const name = file.name.replace(/[^\w .()-]/g, '').slice(0, 120) || `${network}-profile`;
   return {
     network,

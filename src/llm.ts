@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { IrisError, isIrisError } from './errors.js';
+import { IrisVeilError, isIrisVeilError } from './errors.js';
 import type { LlmConfig } from './config.js';
 
 /**
@@ -48,7 +48,7 @@ const defaultSleep: Sleep = (ms, signal) =>
       'abort',
       () => {
         clearTimeout(timer);
-        reject(new IrisError('ABORTED', 'The run was cancelled.'));
+        reject(new IrisVeilError('ABORTED', 'The run was cancelled.'));
       },
       { once: true },
     );
@@ -83,11 +83,11 @@ export function createLlmClient(config: LlmConfig, fetchImpl: FetchLike = fetch,
       });
       raw = (await response.text()).slice(0, MAX_RESPONSE_CHARS);
     } catch (error) {
-      if (options.signal?.aborted) throw new IrisError('ABORTED', 'The run was cancelled.');
+      if (options.signal?.aborted) throw new IrisVeilError('ABORTED', 'The run was cancelled.');
       if (deadline.aborted) {
-        throw new IrisError('LLM_TIMEOUT', `The AI provider did not answer within ${Math.round(config.timeoutMs / 1000)} seconds.`);
+        throw new IrisVeilError('LLM_TIMEOUT', `The AI provider did not answer within ${Math.round(config.timeoutMs / 1000)} seconds.`);
       }
-      throw new IrisError('LLM_UNAVAILABLE', `Could not reach the AI provider at ${new URL(config.baseUrl).host}.`, {
+      throw new IrisVeilError('LLM_UNAVAILABLE', `Could not reach the AI provider at ${new URL(config.baseUrl).host}.`, {
         cause: error,
         detail: error instanceof Error ? error.message : String(error),
       });
@@ -100,12 +100,12 @@ export function createLlmClient(config: LlmConfig, fetchImpl: FetchLike = fetch,
     const text = contentText(choice?.message?.content);
     if (!text.trim()) {
       if (choice?.finish_reason === 'length') {
-        throw new IrisError(
+        throw new IrisVeilError(
           'LLM_BAD_OUTPUT',
           'The model used up its output budget before answering. Try again, or set LLM_REASONING_EFFORT=low.',
         );
       }
-      throw new IrisError('LLM_BAD_OUTPUT', 'The model returned an empty answer.');
+      throw new IrisVeilError('LLM_BAD_OUTPUT', 'The model returned an empty answer.');
     }
     return {
       text,
@@ -127,7 +127,7 @@ export function createLlmClient(config: LlmConfig, fetchImpl: FetchLike = fetch,
         try {
           return await once(messages, options);
         } catch (error) {
-          const failure = isIrisError(error) ? error : new IrisError('LLM_UNAVAILABLE', 'The AI provider call failed.');
+          const failure = isIrisVeilError(error) ? error : new IrisVeilError('LLM_UNAVAILABLE', 'The AI provider call failed.');
           // Some OpenAI-compatible providers reject JSON mode; degrade once to plain text + parsing.
           if (
             failure.code === 'LLM_BAD_REQUEST' &&
@@ -210,32 +210,32 @@ function parseRetryAfter(response: Response, message: string): number | undefine
   return undefined;
 }
 
-function httpError(response: Response, raw: string): IrisError {
+function httpError(response: Response, raw: string): IrisVeilError {
   const message = providerMessage(raw);
   const status = response.status;
   if (status === 401 || status === 403) {
-    return new IrisError('LLM_AUTH', 'The AI provider rejected the API key. Check LLM_API_KEY.', { detail: message });
+    return new IrisVeilError('LLM_AUTH', 'The AI provider rejected the API key. Check LLM_API_KEY.', { detail: message });
   }
   if (status === 429) {
     const retryAfterSeconds = parseRetryAfter(response, message);
     const when = retryAfterSeconds !== undefined ? ` Try again in about ${formatWait(retryAfterSeconds)}.` : ' Try again shortly.';
-    return new IrisError('LLM_RATE_LIMITED', `The AI provider's free-tier rate limit was reached.${when}`, {
+    return new IrisVeilError('LLM_RATE_LIMITED', `The AI provider's free-tier rate limit was reached.${when}`, {
       detail: message,
       retryAfterSeconds,
     });
   }
   if (status === 404) {
-    return new IrisError('LLM_BAD_REQUEST', `The AI provider could not find that model or endpoint. Check LLM_MODEL. (${message})`, {
+    return new IrisVeilError('LLM_BAD_REQUEST', `The AI provider could not find that model or endpoint. Check LLM_MODEL. (${message})`, {
       detail: message,
     });
   }
   if (status >= 500) {
-    return new IrisError('LLM_UNAVAILABLE', `The AI provider had an error (HTTP ${status}). Try again.`, { detail: message });
+    return new IrisVeilError('LLM_UNAVAILABLE', `The AI provider had an error (HTTP ${status}). Try again.`, { detail: message });
   }
   if (/json_validate_failed|failed to generate json/i.test(message)) {
-    return new IrisError('LLM_BAD_OUTPUT', 'The model produced malformed JSON.', { detail: message });
+    return new IrisVeilError('LLM_BAD_OUTPUT', 'The model produced malformed JSON.', { detail: message });
   }
-  return new IrisError('LLM_BAD_REQUEST', `The AI provider rejected the request: ${message}`, { detail: message });
+  return new IrisVeilError('LLM_BAD_REQUEST', `The AI provider rejected the request: ${message}`, { detail: message });
 }
 
 function formatWait(seconds: number): string {
@@ -262,7 +262,7 @@ export function parseJsonObject(text: string): unknown {
       }
     }
   }
-  throw new IrisError('LLM_BAD_OUTPUT', 'The model did not return valid JSON.');
+  throw new IrisVeilError('LLM_BAD_OUTPUT', 'The model did not return valid JSON.');
 }
 
 export interface StructuredResult<T> {
@@ -304,7 +304,7 @@ export async function completeStructured<T>(
           .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`);
       }
     } catch (error) {
-      lastProblems = [isIrisError(error) ? error.message : 'The output could not be parsed.'];
+      lastProblems = [isIrisVeilError(error) ? error.message : 'The output could not be parsed.'];
     }
 
     if (value !== undefined && (lastProblems.length === 0 || attempt === 2)) {
@@ -321,7 +321,7 @@ export async function completeStructured<T>(
     );
   }
 
-  throw new IrisError('LLM_BAD_OUTPUT', 'The model returned output Iris could not use, even after a repair attempt. Try again.', {
+  throw new IrisVeilError('LLM_BAD_OUTPUT', 'The model returned output IrisVeil could not use, even after a repair attempt. Try again.', {
     detail: lastProblems.join('; '),
   });
 }

@@ -1,7 +1,7 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { IncomingMessage } from 'node:http';
-import { createIrisServer, clientIp, silentLogger, type IrisServer } from '../src/server.js';
+import { createIrisVeilServer, clientIp, silentLogger, type IrisVeilServer } from '../src/server.js';
 import { createLlmClient } from '../src/llm.js';
 import { SITE_PAGES, completion, outreachReply, researchReply, startFakeLlm, startSite, testConfig, type FakeLlm } from './helpers.js';
 
@@ -21,7 +21,7 @@ async function readEvents(response: Response): Promise<Event[]> {
 describe('HTTP server', () => {
   let site: Awaited<ReturnType<typeof startSite>>;
   let llm: FakeLlm;
-  let app: IrisServer;
+  let app: IrisVeilServer;
   let base: string;
 
   before(async () => {
@@ -30,7 +30,7 @@ describe('HTTP server', () => {
       json: completion(body.messages[0]!.content.includes('research analyst') ? researchReply(site.origin) : outreachReply()),
     }));
     const config = testConfig(llm.url, { RATE_LIMIT_PER_IP: '4', DAILY_RUN_LIMIT: '50' });
-    app = await createIrisServer({ config, llm: createLlmClient(config.llm), logger: silentLogger });
+    app = await createIrisVeilServer({ config, llm: createLlmClient(config.llm), logger: silentLogger });
     const { port } = await app.listen(0, '127.0.0.1');
     base = `http://127.0.0.1:${port}`;
   });
@@ -114,7 +114,7 @@ describe('daily budget', () => {
       json: completion(body.messages[0]!.content.includes('research analyst') ? researchReply(site.origin) : outreachReply()),
     }));
     const config = testConfig(llm.url, { DAILY_RUN_LIMIT: '1', CACHE_TTL_MINUTES: '0' });
-    const app = await createIrisServer({ config, llm: createLlmClient(config.llm), logger: silentLogger });
+    const app = await createIrisVeilServer({ config, llm: createLlmClient(config.llm), logger: silentLogger });
     const { port } = await app.listen(0, '127.0.0.1');
     const post = (url: string) =>
       fetch(`http://127.0.0.1:${port}/api/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }) });

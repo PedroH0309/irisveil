@@ -2,14 +2,14 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { IrisError } from './errors.js';
+import { IrisVeilError } from './errors.js';
 import type { ChatMessage, CompleteOptions, LlmClient, LlmCompletion } from './llm.js';
 
 /**
- * Runs Iris's two prompts through an AI coding CLI that is already installed and signed in
+ * Runs IrisVeil's two prompts through an AI coding CLI that is already installed and signed in
  * (Claude Code, Codex, Antigravity or Grok) instead of an API key. Each call is one headless,
  * single-turn run in an empty temporary folder, with web search and tools off where the CLI
- * allows it, so the agent only reads the prompt and answers. Iris still validates the output.
+ * allows it, so the agent only reads the prompt and answers. IrisVeil still validates the output.
  */
 
 export const LOCAL_AGENTS = ['claude', 'codex', 'antigravity', 'grok'] as const;
@@ -63,13 +63,13 @@ export function createAgentClient(agent: LocalAgent, options: { timeoutMs: numbe
     model: `${agent} CLI`,
     async complete(messages: ChatMessage[], callOptions: CompleteOptions): Promise<LlmCompletion> {
       const prompt = flattenMessages(messages);
-      if (prompt.length > MAX_PROMPT_CHARS) throw new IrisError('LLM_BAD_OUTPUT', 'The prompt is too large to pass to a local CLI.');
-      const dir = await mkdtemp(join(tmpdir(), 'iris-agent-'));
+      if (prompt.length > MAX_PROMPT_CHARS) throw new IrisVeilError('LLM_BAD_OUTPUT', 'The prompt is too large to pass to a local CLI.');
+      const dir = await mkdtemp(join(tmpdir(), 'irisveil-agent-'));
       try {
         const call = invocation(agent, prompt, dir);
         const stdout = await run(call, dir, AGENT_LABEL[agent], options.timeoutMs, callOptions.signal);
         const text = call.outputFile ? await readFile(call.outputFile, 'utf8').catch(() => stdout) : stdout;
-        if (!text.trim()) throw new IrisError('LLM_BAD_OUTPUT', `${AGENT_LABEL[agent]} returned an empty answer.`);
+        if (!text.trim()) throw new IrisVeilError('LLM_BAD_OUTPUT', `${AGENT_LABEL[agent]} returned an empty answer.`);
         return { text, usage: { promptTokens: estimateTokens(prompt), completionTokens: estimateTokens(text) } };
       } finally {
         await rm(dir, { recursive: true, force: true });
@@ -80,12 +80,12 @@ export function createAgentClient(agent: LocalAgent, options: { timeoutMs: numbe
 
 function run(call: Invocation, cwd: string, label: string, timeoutMs: number, signal: AbortSignal | undefined): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(new IrisError('ABORTED', 'The run was cancelled.'));
+    if (signal?.aborted) return reject(new IrisVeilError('ABORTED', 'The run was cancelled.'));
     const child = spawn(call.command, call.args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1' } });
     let stdout = '';
     let stderr = '';
     let settled = false;
-    const finish = (error: IrisError | undefined, value = '') => {
+    const finish = (error: IrisVeilError | undefined, value = '') => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -96,10 +96,10 @@ function run(call: Invocation, cwd: string, label: string, timeoutMs: number, si
       } else resolve(value);
     };
     const timer = setTimeout(
-      () => finish(new IrisError('LLM_UNAVAILABLE', `${label} did not answer within ${Math.round(timeoutMs / 1000)} seconds.`)),
+      () => finish(new IrisVeilError('LLM_UNAVAILABLE', `${label} did not answer within ${Math.round(timeoutMs / 1000)} seconds.`)),
       timeoutMs,
     );
-    const onAbort = () => finish(new IrisError('ABORTED', 'The run was cancelled.'));
+    const onAbort = () => finish(new IrisVeilError('ABORTED', 'The run was cancelled.'));
     signal?.addEventListener('abort', onAbort, { once: true });
 
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
@@ -110,7 +110,7 @@ function run(call: Invocation, cwd: string, label: string, timeoutMs: number, si
     });
     child.on('error', (error: NodeJS.ErrnoException) =>
       finish(
-        new IrisError(
+        new IrisVeilError(
           'LLM_UNAVAILABLE',
           error.code === 'ENOENT' ? `The ${call.command} command was not found. Install ${label} and sign in, then try again.` : `${label} could not be started.`,
           { detail: error.message },
@@ -121,7 +121,7 @@ function run(call: Invocation, cwd: string, label: string, timeoutMs: number, si
       if (code === 0) finish(undefined, stdout);
       else
         finish(
-          new IrisError('LLM_UNAVAILABLE', `${label} exited with an error. Check that it is signed in by running ${call.command} once.`, {
+          new IrisVeilError('LLM_UNAVAILABLE', `${label} exited with an error. Check that it is signed in by running ${call.command} once.`, {
             detail: stderr.trim().slice(-800),
           }),
         );

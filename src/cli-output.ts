@@ -3,7 +3,7 @@ import type { ProgressEvent, Stage } from './pipeline.js';
 import { BRAND, clock, infoRow, renderMasthead, style, type ColorDepth, type Rgb } from './theme.js';
 
 /**
- * Decoration for a one-off `iris <url>` run in a terminal: the masthead with what is being
+ * Decoration for a one-off `irisveil <url>` run in a terminal: the masthead with what is being
  * researched, then one italic line per pipeline stage. All of it goes to stderr, so stdout
  * stays clean for `--json` and pipes.
  */

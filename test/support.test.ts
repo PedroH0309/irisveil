@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { DailyBudget, FixedWindowLimiter, TtlCache } from '../src/limits.js';
 import { renderMarkdown, renderTerminal, safeText } from '../src/format.js';
 import { loadConfig } from '../src/config.js';
-import { IrisError } from '../src/errors.js';
-import { parseRunInput, type IrisResult } from '../src/pipeline.js';
+import { IrisVeilError } from '../src/errors.js';
+import { parseRunInput, type IrisVeilResult } from '../src/pipeline.js';
 import { VERSION } from '../src/version.js';
 
 const ESC = String.fromCharCode(0x1b);
@@ -69,7 +69,7 @@ describe('TtlCache', () => {
   });
 });
 
-const sample: IrisResult = {
+const sample: IrisVeilResult = {
   schemaVersion: 1,
   generatedAt: '2026-10-19T00:00:00.000Z',
   input: { url: 'https://acme.example/', recipient: null, offer: 'offer', senderName: 'Ayush', senderCompany: 'YourAKShaw', linkedin: null, x: null },
@@ -107,14 +107,14 @@ describe('loadConfig', () => {
   it('defaults to Groq and explains how to get a free key', () => {
     assert.throws(
       () => loadConfig({}),
-      (e: unknown) => e instanceof IrisError && e.code === 'CONFIG_ERROR' && /console\.groq\.com\/keys/.test(e.message),
+      (e: unknown) => e instanceof IrisVeilError && e.code === 'CONFIG_ERROR' && /console\.groq\.com\/keys/.test(e.message),
     );
   });
 
   it('reports every problem at once', () => {
     assert.throws(
       () => loadConfig({ LLM_PROVIDER: 'nope', PORT: 'abc', RATE_LIMIT_PER_IP: '0' }),
-      (e: unknown) => e instanceof IrisError && /LLM_PROVIDER/.test(e.message) && /PORT/.test(e.message) && /RATE_LIMIT_PER_IP/.test(e.message),
+      (e: unknown) => e instanceof IrisVeilError && /LLM_PROVIDER/.test(e.message) && /PORT/.test(e.message) && /RATE_LIMIT_PER_IP/.test(e.message),
     );
   });
 
@@ -140,7 +140,7 @@ describe('parseRunInput', () => {
   });
   it('rejects empty, oversized and non-web input', () => {
     for (const raw of [{}, { url: '' }, { url: 'x'.repeat(3000) }, { url: 'ftp://acme.example' }, { url: 'acme.example', offer: 'x'.repeat(600) }]) {
-      assert.throws(() => parseRunInput(raw), (e: unknown) => e instanceof IrisError && e.code === 'INVALID_INPUT');
+      assert.throws(() => parseRunInput(raw), (e: unknown) => e instanceof IrisVeilError && e.code === 'INVALID_INPUT');
     }
   });
   it('treats blank optional fields as absent', () => {

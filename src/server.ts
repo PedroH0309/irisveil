@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { IrisError, PRE_LLM_CODES, toIrisError, type IrisErrorCode } from './errors.js';
-import type { IrisConfig } from './config.js';
+import { IrisVeilError, PRE_LLM_CODES, toIrisVeilError, type IrisVeilErrorCode } from './errors.js';
+import type { IrisVeilConfig } from './config.js';
 import type { LlmClient } from './llm.js';
 import type { Resolver } from './net-guard.js';
-import { parseRunInput, runIris, type IrisResult, type ProgressEvent } from './pipeline.js';
+import { parseRunInput, runIrisVeil, type IrisVeilResult, type ProgressEvent } from './pipeline.js';
 import { DailyBudget, FixedWindowLimiter, TtlCache } from './limits.js';
 import { renderMarkdown } from './format.js';
 import { VERSION } from './version.js';
@@ -36,8 +36,8 @@ export function createJsonLogger(write: (line: string) => void = (line) => proce
 
 export const silentLogger: Logger = { info() {}, warn() {}, error() {} };
 
-export interface IrisServerOptions {
-  config: IrisConfig;
+export interface IrisVeilServerOptions {
+  config: IrisVeilConfig;
   llm: LlmClient;
   logger?: Logger;
   publicDir?: URL;
@@ -45,7 +45,7 @@ export interface IrisServerOptions {
   now?: () => number;
 }
 
-export interface IrisServer {
+export interface IrisVeilServer {
   server: http.Server;
   listen(port?: number, host?: string): Promise<{ port: number; host: string }>;
   close(graceMs?: number): Promise<void>;
@@ -62,7 +62,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'permissions-policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
 };
 
-const STATUS_BY_CODE: Record<IrisErrorCode, number> = {
+const STATUS_BY_CODE: Record<IrisVeilErrorCode, number> = {
   INVALID_INPUT: 400,
   URL_BLOCKED: 400,
   CONFIG_ERROR: 500,
@@ -99,10 +99,10 @@ const DEFAULT_PUBLIC_DIR = new URL('../public/', import.meta.url);
 
 type RunEvent =
   | ({ type: 'progress' } & ProgressEvent)
-  | { type: 'result'; cached: boolean; result: IrisResult; markdown: string }
-  | { type: 'error'; error: { code: IrisErrorCode; message: string; retryAfterSeconds?: number | undefined } };
+  | { type: 'result'; cached: boolean; result: IrisVeilResult; markdown: string }
+  | { type: 'error'; error: { code: IrisVeilErrorCode; message: string; retryAfterSeconds?: number | undefined } };
 
-export async function createIrisServer(options: IrisServerOptions): Promise<IrisServer> {
+export async function createIrisVeilServer(options: IrisVeilServerOptions): Promise<IrisVeilServer> {
   const { config, llm } = options;
   const logger = options.logger ?? createJsonLogger();
   const now = options.now ?? Date.now;
@@ -116,13 +116,13 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
 
   const perIp = new FixedWindowLimiter(config.server.rateLimitPerIp, config.server.rateLimitWindowMs, now);
   const budget = new DailyBudget(config.server.dailyRunLimit, now);
-  const cache = new TtlCache<IrisResult>(config.server.cacheTtlMs, config.server.cacheMaxEntries, now);
+  const cache = new TtlCache<IrisVeilResult>(config.server.cacheTtlMs, config.server.cacheMaxEntries, now);
   const active = new Set<AbortController>();
   const pruneTimer = setInterval(() => perIp.prune(), 60_000);
   pruneTimer.unref();
 
   if (config.fetch.allowPrivateHosts) {
-    logger.warn('IRIS_ALLOW_PRIVATE_HOSTS is enabled: SSRF protection is OFF. Never use this on a public deployment.');
+    logger.warn('IRISVEIL_ALLOW_PRIVATE_HOSTS is enabled: SSRF protection is OFF. Never use this on a public deployment.');
   }
 
   const server = http.createServer((req, res) => {
@@ -137,7 +137,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     });
 
     handle(req, res, requestId).catch((error: unknown) => {
-      const failure = toIrisError(error);
+      const failure = toIrisVeilError(error);
       logger.error('unhandled', { requestId, code: failure.code, detail: failure.detail ?? failure.message });
       if (!res.headersSent) sendJson(res, 500, { error: { code: 'INTERNAL', message: 'Unexpected server error.' } });
       else res.end();
@@ -201,7 +201,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     try {
       input = parseRunInput(await readJsonBody(req));
     } catch (error) {
-      sendError(res, toIrisError(error));
+      sendError(res, toIrisVeilError(error));
       return;
     }
 
@@ -210,7 +210,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     if (!ipDecision.allowed) {
       sendError(
         res,
-        new IrisError('RATE_LIMITED', `You've hit the demo limit of ${config.server.rateLimitPerIp} runs per ${Math.round(config.server.rateLimitWindowMs / 60_000)} minutes. Try again later, or run Iris locally.`, {
+        new IrisVeilError('RATE_LIMITED', `You've hit the demo limit of ${config.server.rateLimitPerIp} runs per ${Math.round(config.server.rateLimitWindowMs / 60_000)} minutes. Try again later, or run IrisVeil locally.`, {
           retryAfterSeconds: ipDecision.retryAfterSeconds,
         }),
       );
@@ -235,7 +235,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     }
 
     if (active.size >= config.server.maxConcurrentRuns) {
-      sendError(res, new IrisError('BUSY', 'Iris is busy with other runs right now. Try again in a few seconds.', { retryAfterSeconds: 5 }));
+      sendError(res, new IrisVeilError('BUSY', 'IrisVeil is busy with other runs right now. Try again in a few seconds.', { retryAfterSeconds: 5 }));
       return;
     }
 
@@ -243,7 +243,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     if (!budgetDecision.allowed) {
       sendError(
         res,
-        new IrisError('RATE_LIMITED', "Today's free demo quota is used up. It resets at 00:00 UTC, or you can run Iris locally with your own free API key.", {
+        new IrisVeilError('RATE_LIMITED', "Today's free demo quota is used up. It resets at 00:00 UTC, or you can run IrisVeil locally with your own free API key.", {
           retryAfterSeconds: budgetDecision.retryAfterSeconds,
         }),
       );
@@ -259,7 +259,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     const started = now();
     startStream(res);
     try {
-      const result = await runIris(input, {
+      const result = await runIrisVeil(input, {
         config,
         llm,
         signal: controller.signal,
@@ -284,7 +284,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
         tokens: result.stats.promptTokens + result.stats.completionTokens,
       });
     } catch (error) {
-      const failure = toIrisError(error);
+      const failure = toIrisVeilError(error);
       if (PRE_LLM_CODES.has(failure.code)) budget.refund();
       writeEvent(res, {
         type: 'error',
@@ -347,7 +347,7 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown, heade
   res.end(payload);
 }
 
-function sendError(res: http.ServerResponse, error: IrisError, status = STATUS_BY_CODE[error.code]): void {
+function sendError(res: http.ServerResponse, error: IrisVeilError, status = STATUS_BY_CODE[error.code]): void {
   const headers: Record<string, string> = {};
   if (error.retryAfterSeconds !== undefined) headers['retry-after'] = String(error.retryAfterSeconds);
   sendJson(res, status, { error: { code: error.code, message: error.message, retryAfterSeconds: error.retryAfterSeconds } }, headers);
@@ -403,12 +403,12 @@ function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
     const type = String(req.headers['content-type'] ?? '');
     if (!/^application\/json\b/i.test(type)) {
       req.resume();
-      reject(new IrisError('INVALID_INPUT', 'Send a JSON body with Content-Type: application/json.'));
+      reject(new IrisVeilError('INVALID_INPUT', 'Send a JSON body with Content-Type: application/json.'));
       return;
     }
     if (Number(req.headers['content-length'] ?? 0) > MAX_BODY_BYTES) {
       req.resume();
-      reject(new IrisError('INVALID_INPUT', 'Request body is too large.'));
+      reject(new IrisVeilError('INVALID_INPUT', 'Request body is too large.'));
       return;
     }
     const chunks: Buffer[] = [];
@@ -419,7 +419,7 @@ function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
         done = true;
-        reject(new IrisError('INVALID_INPUT', 'Request body is too large.'));
+        reject(new IrisVeilError('INVALID_INPUT', 'Request body is too large.'));
         return;
       }
       chunks.push(chunk);
@@ -430,7 +430,7 @@ function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
       } catch {
-        reject(new IrisError('INVALID_INPUT', 'Request body must be valid JSON.'));
+        reject(new IrisVeilError('INVALID_INPUT', 'Request body must be valid JSON.'));
       }
     });
     req.on('error', (error) => {

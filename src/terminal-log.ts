@@ -5,14 +5,14 @@ import { createSpinner } from './spinner.js';
 import { BRAND, clock, infoRow, renderMasthead, style, type ColorDepth, type Rgb } from './theme.js';
 
 /**
- * Human-friendly output for `iris serve` in an interactive terminal: a startup banner with the
- * Iris masthead and server details, then italic one-line logs.
+ * Human-friendly output for `irisveil serve` in an interactive terminal: a startup banner with the
+ * IrisVeil masthead and server details, then italic one-line logs.
  * Non-TTY output (Render, Docker, pipes) keeps the JSON logger, so log drains are unaffected.
  */
 
-/** Pretty logs only when a person is watching; IRIS_LOG_FORMAT=json|pretty overrides. */
+/** Pretty logs only when a person is watching; IRISVEIL_LOG_FORMAT=json|pretty overrides. */
 export function wantsPrettyLogs(stream: { isTTY?: boolean }, env: NodeJS.ProcessEnv = process.env): boolean {
-  const format = env.IRIS_LOG_FORMAT?.toLowerCase();
+  const format = env.IRISVEIL_LOG_FORMAT?.toLowerCase();
   if (format === 'json') return false;
   if (format === 'pretty') return true;
   return Boolean(stream.isTTY);

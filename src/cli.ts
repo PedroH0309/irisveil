@@ -2,24 +2,24 @@
 import { parseArgs } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { loadConfig, loadDotEnv, type IrisConfig } from './config.js';
-import { IrisError, isIrisError, toIrisError } from './errors.js';
+import { loadConfig, loadDotEnv, type IrisVeilConfig } from './config.js';
+import { IrisVeilError, isIrisVeilError, toIrisVeilError } from './errors.js';
 import { createLlmClient, type LlmClient } from './llm.js';
 import { createAgentClient, LOCAL_AGENTS, type LocalAgent } from './local-agent.js';
-import { parseRunInput, runIris } from './pipeline.js';
+import { parseRunInput, runIrisVeil } from './pipeline.js';
 import { renderMarkdown, renderTerminal, safeText } from './format.js';
-import { createIrisServer, createJsonLogger } from './server.js';
+import { createIrisVeilServer, createJsonLogger } from './server.js';
 import { createPrettyLogger, renderBanner, wantsPrettyLogs } from './terminal-log.js';
 import { colorDepth } from './theme.js';
 import { renderFailure, renderNote, renderProgress, renderRunHeader } from './cli-output.js';
 import { createSpinner } from './spinner.js';
 import { VERSION } from './version.js';
 
-const HELP = `Iris ${VERSION}: cited lead research and outreach drafts from a company website.
+const HELP = `IrisVeil ${VERSION}: cited lead research and outreach drafts from a company website.
 
 Usage
-  iris <company-url> [options]     Research a company and draft 3 outreach emails
-  iris serve [--port N] [--host H] Start the web app (default http://127.0.0.1:3000)
+  irisveil <company-url> [options]     Research a company and draft 3 outreach emails
+  irisveil serve [--port N] [--host H] Start the web app (default http://127.0.0.1:3000)
 
 Options
   -t, --to <"Name, Role">   Who the emails are for, e.g. "Cristina Cordova, Chief Operating Officer"
@@ -39,16 +39,16 @@ Options
   -v, --version             Show the version
 
 Examples
-  iris linear.app
-  iris https://posthog.com --to "Cristina Cordova, Chief Operating Officer" --out posthog.md
-  iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf
-  iris linear.app --to "Cristina Cordova" --x ~/Downloads/cjc.md
-  iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
-  iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md --claude
-  iris serve --port 8080
-  iris serve --claude
+  irisveil linear.app
+  irisveil https://posthog.com --to "Cristina Cordova, Chief Operating Officer" --out posthog.md
+  irisveil linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf
+  irisveil linear.app --to "Cristina Cordova" --x ~/Downloads/cjc.md
+  irisveil linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
+  irisveil linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md --claude
+  irisveil serve --port 8080
+  irisveil serve --claude
 
-Configuration lives in .env (see .env.example). With no API key in .env, pass one of the CLI flags. Docs: https://github.com/YourAKShaw/iris`;
+Configuration lives in .env (see .env.example). With no API key in .env, pass one of the CLI flags. Docs: https://github.com/YourAKShaw/irisveil`;
 
 const EXIT = { ok: 0, failure: 1, usage: 2 } as const;
 
@@ -59,8 +59,8 @@ function decorated(): boolean {
 }
 
 function printError(error: unknown): void {
-  const failure = toIrisError(error);
-  const detail = process.env.IRIS_DEBUG ? failure.detail : undefined;
+  const failure = toIrisVeilError(error);
+  const detail = process.env.IRISVEIL_DEBUG ? failure.detail : undefined;
   if (decorated()) {
     process.stderr.write(renderFailure(failure.message, detail, colorDepth(process.stderr)));
     return;
@@ -76,7 +76,7 @@ async function readProfileArg(path: string | undefined, label: string): Promise<
   try {
     return { name: basename(resolved), data: (await readFile(resolved)).toString('base64') };
   } catch {
-    throw new IrisError('INVALID_INPUT', `Could not read the ${label} at ${path}.`);
+    throw new IrisVeilError('INVALID_INPUT', `Could not read the ${label} at ${path}.`);
   }
 }
 
@@ -106,7 +106,7 @@ async function main(argv: string[]): Promise<number> {
       },
     });
   } catch (error) {
-    process.stderr.write(`${(error as Error).message}\nRun "iris --help" for usage.\n`);
+    process.stderr.write(`${(error as Error).message}\nRun "irisveil --help" for usage.\n`);
     return EXIT.usage;
   }
 
@@ -137,7 +137,7 @@ async function main(argv: string[]): Promise<number> {
   }
   const agent: LocalAgent | undefined = agents[0];
 
-  let config: IrisConfig;
+  let config: IrisVeilConfig;
   let llm: LlmClient;
   try {
     loadDotEnv();
@@ -177,7 +177,7 @@ async function main(argv: string[]): Promise<number> {
   const spinner = fancy && process.stderr.isTTY && errDepth !== 'none' ? createSpinner({ stream: process.stderr, depth: errDepth }) : undefined;
 
   try {
-    const result = await runIris(input, {
+    const result = await runIrisVeil(input, {
       config,
       llm,
       signal: controller.signal,
@@ -205,11 +205,11 @@ async function main(argv: string[]): Promise<number> {
   } catch (error) {
     spinner?.stop();
     printError(error);
-    return isIrisError(error) && error.code === 'ABORTED' ? 130 : EXIT.failure;
+    return isIrisVeilError(error) && error.code === 'ABORTED' ? 130 : EXIT.failure;
   }
 }
 
-async function serve(config: IrisConfig, llm: LlmClient, portFlag: string | undefined, hostFlag: string | undefined): Promise<number> {
+async function serve(config: IrisVeilConfig, llm: LlmClient, portFlag: string | undefined, hostFlag: string | undefined): Promise<number> {
   const port = portFlag === undefined ? config.server.port : Number(portFlag);
   if (!Number.isInteger(port) || port < 0 || port > 65_535) {
     process.stderr.write(`Invalid --port: ${portFlag}\n`);
@@ -218,7 +218,7 @@ async function serve(config: IrisConfig, llm: LlmClient, portFlag: string | unde
   const pretty = wantsPrettyLogs(process.stdout);
   const depth = colorDepth(process.stdout);
   const logger = pretty ? createPrettyLogger({ depth, animate: process.stdout.isTTY ? process.stdout : undefined }) : createJsonLogger();
-  const app = await createIrisServer({ config, llm, logger });
+  const app = await createIrisVeilServer({ config, llm, logger });
   const address = await app.listen(port, hostFlag ?? config.server.host);
   const listening = {
     url: `http://${address.host.includes(':') ? `[${address.host}]` : address.host}:${address.port}`,

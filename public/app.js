@@ -1,4 +1,4 @@
-// Iris web client. No framework, no third-party requests.
+// IrisVeil web client. No framework, no third-party requests.
 // Every string from the server (website text, model output) is rendered with textContent, never innerHTML.
 (function () {
   'use strict';
@@ -17,11 +17,11 @@
   const errorBox = $('error');
   const results = $('results');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const REPO_URL = 'https://github.com/YourAKShaw/iris#-quick-start';
+  const REPO_URL = 'https://github.com/YourAKShaw/irisveil#-quick-start';
 
   let running = false;
   let lastMarkdown = '';
-  let lastSlug = 'iris';
+  let lastSlug = 'irisveil';
 
   function el(tag, attrs, ...children) {
     const node = document.createElement(tag);
@@ -90,7 +90,7 @@
     errorBox.append(el('p', { text: error.message || 'Something went wrong. Try again.' }));
     const quota = error.code === 'RATE_LIMITED' || error.code === 'LLM_RATE_LIMITED';
     if (quota) {
-      const link = el('a', { href: REPO_URL, text: 'Run Iris on your own machine with a free API key' });
+      const link = el('a', { href: REPO_URL, text: 'Run IrisVeil on your own machine with a free API key' });
       errorBox.append(el('p', {}, link, '.'));
     }
     errorBox.hidden = false;
@@ -275,7 +275,7 @@
     renderDrafts(result);
     renderMeta(result, cached);
     lastMarkdown = markdown || '';
-    lastSlug = (result.company.name || 'iris').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'iris';
+    lastSlug = (result.company.name || 'irisveil').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'irisveil';
     $('download').hidden = !lastMarkdown;
     results.hidden = false;
     results.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' });
@@ -284,7 +284,7 @@
   $('download').addEventListener('click', () => {
     if (!lastMarkdown) return;
     const blob = new Blob([lastMarkdown], { type: 'text/markdown;charset=utf-8' });
-    const link = el('a', { href: URL.createObjectURL(blob), download: lastSlug + '-iris-brief.md' });
+    const link = el('a', { href: URL.createObjectURL(blob), download: lastSlug + '-irisveil-brief.md' });
     document.body.append(link);
     link.click();
     link.remove();
@@ -405,11 +405,11 @@
 
       if (!finished) {
         finishLog(true);
-        showError({ message: 'The connection closed before Iris finished. Try again.' });
+        showError({ message: 'The connection closed before IrisVeil finished. Try again.' });
       }
     } catch {
       finishLog(true);
-      showError({ message: 'Could not reach the Iris server. Check your connection and try again.' });
+      showError({ message: 'Could not reach the IrisVeil server. Check your connection and try again.' });
     } finally {
       setRunning(false);
     }

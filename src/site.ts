@@ -2,7 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import zlib from 'node:zlib';
 import type { Readable } from 'node:stream';
-import { IrisError, isIrisError } from './errors.js';
+import { IrisVeilError, isIrisVeilError } from './errors.js';
 import { assertFetchableUrl, createGuardedLookup, type Resolver } from './net-guard.js';
 import { extractDocument, pickCandidateLinks } from './extract.js';
 import type { FetchConfig } from './config.js';
@@ -46,14 +46,14 @@ export async function fetchHtml(input: string | URL, options: FetchOptions): Pro
       try {
         next = new URL(response.location, current);
       } catch {
-        throw new IrisError('FETCH_FAILED', 'The site sent an invalid redirect.');
+        throw new IrisVeilError('FETCH_FAILED', 'The site sent an invalid redirect.');
       }
       current = next;
       continue;
     }
     return { url: current.toString(), status: response.status, contentType: response.contentType, html: response.body };
   }
-  throw new IrisError('FETCH_FAILED', 'The site redirected too many times.');
+  throw new IrisVeilError('FETCH_FAILED', 'The site redirected too many times.');
 }
 
 interface RawResponse {
@@ -108,7 +108,7 @@ function requestOnce(url: URL, options: FetchOptions): Promise<RawResponse> {
         else if (encoding === 'deflate') stream = response.pipe(zlib.createInflate());
         else if (encoding === 'br') stream = response.pipe(zlib.createBrotliDecompress());
         else if (encoding !== 'identity' && encoding !== '') {
-          fail(new IrisError('FETCH_FAILED', `The site used an unsupported content encoding (${encoding}).`));
+          fail(new IrisVeilError('FETCH_FAILED', `The site used an unsupported content encoding (${encoding}).`));
           return;
         }
 
@@ -154,25 +154,25 @@ function decodeBody(buffer: Buffer, contentType: string): string {
   }
 }
 
-function mapNetworkError(error: unknown, outer: AbortSignal | undefined, deadline: AbortSignal, timeoutMs: number): IrisError {
-  if (isIrisError(error)) return error;
-  if (outer?.aborted) return new IrisError('ABORTED', 'The run was cancelled.');
+function mapNetworkError(error: unknown, outer: AbortSignal | undefined, deadline: AbortSignal, timeoutMs: number): IrisVeilError {
+  if (isIrisVeilError(error)) return error;
+  if (outer?.aborted) return new IrisVeilError('ABORTED', 'The run was cancelled.');
   if (deadline.aborted) {
-    return new IrisError('FETCH_FAILED', `The site did not respond within ${Math.round(timeoutMs / 1000)} seconds.`);
+    return new IrisVeilError('FETCH_FAILED', `The site did not respond within ${Math.round(timeoutMs / 1000)} seconds.`);
   }
   const code = (error as NodeJS.ErrnoException | undefined)?.code ?? '';
   const detail = error instanceof Error ? `${code} ${error.message}`.trim() : String(error);
-  if (code === 'URL_BLOCKED' && error instanceof Error) return new IrisError('URL_BLOCKED', error.message);
+  if (code === 'URL_BLOCKED' && error instanceof Error) return new IrisVeilError('URL_BLOCKED', error.message);
   if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
-    return new IrisError('FETCH_FAILED', "Couldn't find that domain. Check the website address.", { detail });
+    return new IrisVeilError('FETCH_FAILED', "Couldn't find that domain. Check the website address.", { detail });
   }
   if (code === 'ECONNREFUSED' || code === 'ECONNRESET' || code === 'EHOSTUNREACH') {
-    return new IrisError('FETCH_FAILED', 'The site refused or dropped the connection.', { detail });
+    return new IrisVeilError('FETCH_FAILED', 'The site refused or dropped the connection.', { detail });
   }
   if (/CERT|SSL|TLS|SELF_SIGNED/i.test(code)) {
-    return new IrisError('FETCH_FAILED', "The site's TLS certificate could not be verified.", { detail });
+    return new IrisVeilError('FETCH_FAILED', "The site's TLS certificate could not be verified.", { detail });
   }
-  return new IrisError('FETCH_FAILED', "Couldn't load the website.", { detail });
+  return new IrisVeilError('FETCH_FAILED', "Couldn't load the website.", { detail });
 }
 
 function isHtml(contentType: string): boolean {
@@ -190,10 +190,10 @@ export async function crawlSite(
 ): Promise<CrawlResult> {
   const start = await fetchHtml(startUrl, options);
   if (start.status >= 400) {
-    throw new IrisError('FETCH_FAILED', `The site answered with HTTP ${start.status}.`);
+    throw new IrisVeilError('FETCH_FAILED', `The site answered with HTTP ${start.status}.`);
   }
   if (!isHtml(start.contentType)) {
-    throw new IrisError('NOT_HTML', 'That URL is not a web page (expected HTML).');
+    throw new IrisVeilError('NOT_HTML', 'That URL is not a web page (expected HTML).');
   }
   onPage?.(start.url);
 
@@ -204,21 +204,21 @@ export async function crawlSite(
   const extra = await Promise.allSettled(
     candidates.map(async (url) => {
       const page = await fetchHtml(url, options);
-      if (page.status >= 400) throw new IrisError('FETCH_FAILED', `HTTP ${page.status}`);
-      if (!isHtml(page.contentType)) throw new IrisError('NOT_HTML', 'not HTML');
+      if (page.status >= 400) throw new IrisVeilError('FETCH_FAILED', `HTTP ${page.status}`);
+      if (!isHtml(page.contentType)) throw new IrisVeilError('NOT_HTML', 'not HTML');
       onPage?.(page.url);
       return { url: page.url, doc: extractDocument(page.html) };
     }),
   );
 
-  if (options.signal?.aborted) throw new IrisError('ABORTED', 'The run was cancelled.');
+  if (options.signal?.aborted) throw new IrisVeilError('ABORTED', 'The run was cancelled.');
 
   const documents = [{ url: start.url, doc: startDoc }];
   extra.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       if (!documents.some((d) => d.url === result.value.url)) documents.push(result.value);
     } else {
-      const reason = isIrisError(result.reason) ? result.reason.message : 'failed';
+      const reason = isIrisVeilError(result.reason) ? result.reason.message : 'failed';
       skipped.push({ url: candidates[index]!, reason });
     }
   });
@@ -237,9 +237,9 @@ export async function crawlSite(
 
   const totalChars = pages.reduce((sum, p) => sum + p.text.length + p.description.length, 0);
   if (totalChars < 200) {
-    throw new IrisError(
+    throw new IrisVeilError(
       'SITE_TOO_THIN',
-      'Iris could not find enough readable text on that site. It may render its content with JavaScript, which Iris does not execute.',
+      'IrisVeil could not find enough readable text on that site. It may render its content with JavaScript, which IrisVeil does not execute.',
     );
   }
 

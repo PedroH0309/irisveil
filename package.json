@@ -1,16 +1,16 @@
 {
-  "name": "iris",
+  "name": "irisveil",
   "version": "1.0.0",
-  "description": "Iris turns a company website into a cited research brief and three personalized outreach drafts. Every fact is checked against the source page before an email can use it.",
+  "description": "IrisVeil turns a company website into a cited research brief and three personalized outreach drafts. Every fact is checked against the source page before an email can use it.",
   "license": "AGPL-3.0-only",
   "author": "Ayush Kumar Shaw",
-  "homepage": "https://github.com/YourAKShaw/iris#readme",
+  "homepage": "https://github.com/YourAKShaw/irisveil#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YourAKShaw/iris.git"
+    "url": "git+https://github.com/YourAKShaw/irisveil.git"
   },
   "bugs": {
-    "url": "https://github.com/YourAKShaw/iris/issues"
+    "url": "https://github.com/YourAKShaw/irisveil/issues"
   },
   "keywords": [
     "lead-research",
@@ -26,7 +26,7 @@
     "node": ">=22.12.0"
   },
   "bin": {
-    "iris": "dist/cli.js"
+    "irisveil": "dist/cli.js"
   },
   "files": [
     "dist",

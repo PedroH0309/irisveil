@@ -4,7 +4,7 @@
 
 ## Verification
 
-<!-- List the commands you ran and their results. If you ran Iris against a live provider or website, say which (no keys). Explain any check you did not run. -->
+<!-- List the commands you ran and their results. If you ran IrisVeil against a live provider or website, say which (no keys). Explain any check you did not run. -->
 
 ## Risks or compatibility
 

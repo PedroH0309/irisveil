@@ -1,8 +1,8 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { runIris, parseRunInput, type ProgressEvent } from '../src/pipeline.js';
+import { runIrisVeil, parseRunInput, type ProgressEvent } from '../src/pipeline.js';
 import { createLlmClient } from '../src/llm.js';
-import { IrisError } from '../src/errors.js';
+import { IrisVeilError } from '../src/errors.js';
 import { SITE_PAGES, completion, outreachReply, researchReply, startFakeLlm, startSite, testConfig, type ChatRequestBody, type FakeLlm } from './helpers.js';
 
 /**
@@ -12,7 +12,7 @@ import { SITE_PAGES, completion, outreachReply, researchReply, startFakeLlm, sta
 
 const isResearch = (body: ChatRequestBody) => body.messages[0]!.content.includes('research analyst');
 
-describe('runIris end to end', () => {
+describe('runIrisVeil end to end', () => {
   let site: Awaited<ReturnType<typeof startSite>>;
   let llm: FakeLlm;
 
@@ -28,7 +28,7 @@ describe('runIris end to end', () => {
   it('signs drafts with the sender from the run input, not only .env', async () => {
     const config = testConfig(llm.url);
     const before = llm.calls.length;
-    const result = await runIris(parseRunInput({ url: `${site.origin}/`, senderName: 'Dana Lee', senderCompany: 'Lee Labs' }), {
+    const result = await runIrisVeil(parseRunInput({ url: `${site.origin}/`, senderName: 'Dana Lee', senderCompany: 'Lee Labs' }), {
       config,
       llm: createLlmClient(config.llm),
     });
@@ -41,7 +41,7 @@ describe('runIris end to end', () => {
   it('produces a verified brief and grounded drafts', async () => {
     const config = testConfig(llm.url);
     const progress: ProgressEvent[] = [];
-    const result = await runIris(parseRunInput({ url: `${site.origin}/`, recipient: 'Priya Rao, COO' }), {
+    const result = await runIrisVeil(parseRunInput({ url: `${site.origin}/`, recipient: 'Priya Rao, COO' }), {
       config,
       llm: createLlmClient(config.llm),
       onProgress: (event) => progress.push(event),
@@ -73,10 +73,10 @@ describe('runIris end to end', () => {
   });
 
   it('refuses private addresses when SSRF protection is on (the default)', async () => {
-    const config = testConfig(llm.url, { IRIS_ALLOW_PRIVATE_HOSTS: 'false' });
+    const config = testConfig(llm.url, { IRISVEIL_ALLOW_PRIVATE_HOSTS: 'false' });
     await assert.rejects(
-      runIris(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) }),
-      (error: unknown) => error instanceof IrisError && error.code === 'URL_BLOCKED',
+      runIrisVeil(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) }),
+      (error: unknown) => error instanceof IrisVeilError && error.code === 'URL_BLOCKED',
     );
   });
 
@@ -85,8 +85,8 @@ describe('runIris end to end', () => {
     const controller = new AbortController();
     controller.abort();
     await assert.rejects(
-      runIris(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm), signal: controller.signal }),
-      (error: unknown) => error instanceof IrisError && error.code === 'ABORTED',
+      runIrisVeil(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm), signal: controller.signal }),
+      (error: unknown) => error instanceof IrisVeilError && error.code === 'ABORTED',
     );
   });
 
@@ -95,8 +95,8 @@ describe('runIris end to end', () => {
     try {
       const config = testConfig(llm.url);
       await assert.rejects(
-        runIris(parseRunInput({ url: `${spa.origin}/` }), { config, llm: createLlmClient(config.llm) }),
-        (error: unknown) => error instanceof IrisError && error.code === 'SITE_TOO_THIN',
+        runIrisVeil(parseRunInput({ url: `${spa.origin}/` }), { config, llm: createLlmClient(config.llm) }),
+        (error: unknown) => error instanceof IrisVeilError && error.code === 'SITE_TOO_THIN',
       );
     } finally {
       await spa.close();
@@ -116,7 +116,7 @@ describe('prompt injection from the website', () => {
     });
     try {
       const config = testConfig(llm.url);
-      const result = await runIris(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) });
+      const result = await runIrisVeil(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) });
 
       assert.equal(outreachCalls, 2, 'one repair attempt was made');
       const repairRequest = llm.calls.at(-1)!.messages.at(-1)!.content;
@@ -139,8 +139,8 @@ describe('model failures', () => {
     try {
       const config = testConfig(llm.url);
       await assert.rejects(
-        runIris(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) }),
-        (error: unknown) => error instanceof IrisError && error.code === 'LLM_BAD_OUTPUT',
+        runIrisVeil(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) }),
+        (error: unknown) => error instanceof IrisVeilError && error.code === 'LLM_BAD_OUTPUT',
       );
       assert.equal(llm.calls.length, 2, 'one repair attempt, then stop');
     } finally {

@@ -1,4 +1,4 @@
-import { IrisError } from './errors.js';
+import { IrisVeilError } from './errors.js';
 
 /**
  * Runtime configuration, parsed once from environment variables.
@@ -101,7 +101,7 @@ export interface ServerConfig {
   sourceUrl: string;
 }
 
-export interface IrisConfig {
+export interface IrisVeilConfig {
   llm: LlmConfig;
   sender: SenderProfile;
   fetch: FetchConfig;
@@ -131,7 +131,7 @@ export interface LoadConfigOptions {
   localAgent?: boolean;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadConfigOptions = {}): IrisConfig {
+export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadConfigOptions = {}): IrisVeilConfig {
   const problems: string[] = [];
 
   const str = (name: string): string | undefined => {
@@ -228,7 +228,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
     problems.push(`SENDER_OFFER must be ${LIMITS.offerChars} characters or fewer.`);
   }
 
-  const config: IrisConfig = {
+  const config: IrisVeilConfig = {
     llm: {
       provider,
       baseUrl,
@@ -243,7 +243,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
     },
     sender,
     fetch: {
-      allowPrivateHosts: bool('IRIS_ALLOW_PRIVATE_HOSTS', false),
+      allowPrivateHosts: bool('IRISVEIL_ALLOW_PRIVATE_HOSTS', false),
       pageTimeoutMs: int('FETCH_TIMEOUT_SECONDS', 8, 2, 60) * 1000,
       maxPageBytes: 1_500_000,
       maxPages: int('FETCH_MAX_PAGES', 4, 1, 6),
@@ -266,7 +266,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
   };
 
   if (problems.length > 0) {
-    throw new IrisError(
+    throw new IrisVeilError(
       'CONFIG_ERROR',
       `Configuration problem${problems.length > 1 ? 's' : ''}:\n${problems.map((p) => `  - ${p}`).join('\n')}`,
     );

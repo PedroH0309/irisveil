@@ -13,11 +13,11 @@ function capture(depth: 'none' | 'truecolor') {
 }
 
 describe('terminal logs', () => {
-  it('chooses pretty logs only for a TTY unless IRIS_LOG_FORMAT overrides', () => {
+  it('chooses pretty logs only for a TTY unless IRISVEIL_LOG_FORMAT overrides', () => {
     assert.equal(wantsPrettyLogs({ isTTY: true }, {}), true);
     assert.equal(wantsPrettyLogs({ isTTY: false }, {}), false);
-    assert.equal(wantsPrettyLogs({ isTTY: true }, { IRIS_LOG_FORMAT: 'json' }), false);
-    assert.equal(wantsPrettyLogs({ isTTY: false }, { IRIS_LOG_FORMAT: 'pretty' }), true);
+    assert.equal(wantsPrettyLogs({ isTTY: true }, { IRISVEIL_LOG_FORMAT: 'json' }), false);
+    assert.equal(wantsPrettyLogs({ isTTY: false }, { IRISVEIL_LOG_FORMAT: 'pretty' }), true);
   });
 
   it('detects color depth and honours NO_COLOR', () => {

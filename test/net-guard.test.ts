@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { LookupAddress } from 'node:dns';
 import { assertFetchableUrl, createGuardedLookup, isBlockedAddress } from '../src/net-guard.js';
-import { IrisError } from '../src/errors.js';
+import { IrisVeilError } from '../src/errors.js';
 
 const strict = { allowPrivateHosts: false };
 
@@ -40,7 +40,7 @@ describe('isBlockedAddress', () => {
 
 describe('assertFetchableUrl', () => {
   const rejects = (url: string) =>
-    assert.throws(() => assertFetchableUrl(new URL(url), strict), (error: unknown) => error instanceof IrisError && error.code === 'URL_BLOCKED');
+    assert.throws(() => assertFetchableUrl(new URL(url), strict), (error: unknown) => error instanceof IrisVeilError && error.code === 'URL_BLOCKED');
 
   it('rejects non-http schemes', () => rejects('file:///etc/passwd'));
   it('rejects ftp', () => rejects('ftp://example.com/'));
@@ -70,8 +70,8 @@ describe('createGuardedLookup', () => {
 
   it('refuses DNS answers that point at private space (rebinding defence)', async () => {
     const result = await lookup([{ address: '10.0.0.5', family: 4 }], false);
-    assert.ok(result.error instanceof IrisError);
-    assert.equal((result.error as IrisError).code, 'URL_BLOCKED');
+    assert.ok(result.error instanceof IrisVeilError);
+    assert.equal((result.error as IrisVeilError).code, 'URL_BLOCKED');
   });
 
   it('refuses mixed answers if any address is private', async () => {
@@ -82,7 +82,7 @@ describe('createGuardedLookup', () => {
       ],
       true,
     );
-    assert.equal((result.error as IrisError).code, 'URL_BLOCKED');
+    assert.equal((result.error as IrisVeilError).code, 'URL_BLOCKED');
   });
 
   it('returns the first public address in single mode', async () => {
@@ -117,7 +117,7 @@ describe('fetchHtml wiring', () => {
     const rebinding = async () => [{ address: '127.0.0.1', family: 4 }];
     await assert.rejects(
       fetchHtml('http://rebind.example/', { ...config.fetch, resolver: rebinding }),
-      (error: unknown) => error instanceof IrisError && error.code === 'URL_BLOCKED',
+      (error: unknown) => error instanceof IrisVeilError && error.code === 'URL_BLOCKED',
     );
   });
 });
