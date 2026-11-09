@@ -43,7 +43,7 @@ Iris never sends email. It produces drafts for a person to review and send.
 
 ## 🚀 Quick start
 
-You need **Node.js 22.12 or later** and a free API key from [Groq](https://console.groq.com/keys).
+You need **Node.js 22.12 or later**, plus either a free API key from [Groq](https://console.groq.com/keys) or an AI coding CLI you're already signed in to: Claude Code, Codex, Antigravity or Grok (see [Use a local AI CLI instead of an API key](#use-a-local-ai-cli-instead-of-an-api-key)).
 
 ```sh
 git clone https://github.com/YourAKShaw/iris.git
@@ -52,7 +52,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and set `LLM_API_KEY` to your Groq key. Set `SENDER_NAME`, `SENDER_COMPANY` and `SENDER_OFFER` to describe you and what you sell. Then:
+Open `.env` and set `LLM_API_KEY` to your Groq key, or skip the key and add `--claude` (or `--codex`, `--antigravity`, `--grok`) to your commands. Set `SENDER_NAME`, `SENDER_COMPANY` and `SENDER_OFFER` to describe you and what you sell. Then:
 
 ```sh
 # Research a company in the terminal
@@ -65,8 +65,14 @@ npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --x ~
 # Or from both
 npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
 
+# No API key? Use your signed-in Claude Code (or --codex, --antigravity, --grok)
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md --claude
+
 # Or start the web app at http://127.0.0.1:3000
 npm run dev:serve
+
+# The web app with Claude Code answering instead of an API key
+npm run dev -- serve --claude
 ```
 
 For a production build:
@@ -116,7 +122,29 @@ iris serve [--port N] [--host H] Start the web app
     --out <file>          Also save the result (.md for Markdown, .json for JSON)
     --json                Print the full result as JSON
 -q, --quiet               Hide progress messages
+    --claude              Use your signed-in Claude Code CLI instead of an API key
+    --codex               Use your signed-in Codex CLI instead of an API key
+    --antigravity         Use your signed-in Antigravity CLI (agy) instead of an API key
+    --grok                Use your signed-in Grok CLI instead of an API key
 ```
+
+### Use a local AI CLI instead of an API key
+
+If you already use an AI coding CLI, Iris can send its prompts through it, so `.env` needs no `LLM_PROVIDER` or `LLM_API_KEY`. Pick one flag per run; it works for both research runs and `serve`:
+
+| Flag | Runs | Install and sign in |
+| :--- | :--- | :--- |
+| `--claude` | `claude -p` | [Claude Code](https://docs.claude.com/en/docs/claude-code) |
+| `--codex` | `codex exec` | [Codex CLI](https://github.com/openai/codex) |
+| `--antigravity` | `agy -p` | Antigravity CLI |
+| `--grok` | `grok -p` | Grok CLI |
+
+```sh
+iris linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md --claude
+iris serve --claude      # web app at http://127.0.0.1:3000, answered by Claude Code
+```
+
+Each call is a single headless turn, run from an empty temporary folder, with tools or web search turned off where the CLI allows it and in a read-only sandbox for Codex; Iris checks the answer exactly as it checks an API response. Usage counts against your CLI's plan, not an API key. A local CLI is slower than an API (a run takes about a minute), so the defaults rise to `LLM_TIMEOUT_SECONDS=240` and `RUN_TIMEOUT_SECONDS=600`. Without a flag, Iris uses the provider in `.env` and stops with a clear message if no key is set. `iris serve --claude` only works where that CLI is installed, so it is for running the web app on your own machine.
 
 ### Personalise with LinkedIn and X
 
@@ -187,13 +215,13 @@ All settings are environment variables, read from `.env` in the working director
 | Variable | Default | Purpose |
 | :--- | :--- | :--- |
 | `LLM_PROVIDER` | `groq` | `groq`, `gemini`, `openrouter`, `ollama`, `openai` or `custom` |
-| `LLM_API_KEY` | none | Provider key. Required except for `ollama` and `custom` |
+| `LLM_API_KEY` | none | Provider key. Required except for `ollama` and `custom`, or when you pass `--claude`, `--codex`, `--antigravity` or `--grok` |
 | `LLM_MODEL` | per provider | `openai/gpt-oss-120b` on Groq, `gemini-3.8-flash` on Gemini; required for the others |
 | `LLM_BASE_URL` | per provider | Override the endpoint; required for `custom` |
 | `LLM_JSON_MODE` | `json_object` | `off` disables JSON mode; Iris also falls back automatically if a provider rejects it |
 | `LLM_REASONING_EFFORT` | `low` (Groq, Gemini) | `off` to omit, or `none`/`minimal`/`low`/`medium`/`high` |
 | `LLM_TEMPERATURE` | provider default | 0 to 2 |
-| `LLM_TIMEOUT_SECONDS` | `45` | Per model call |
+| `LLM_TIMEOUT_SECONDS` | `45` (`240` with a CLI flag) | Per model call, up to 600 |
 | `SENDER_NAME`, `SENDER_COMPANY`, `SENDER_OFFER` | YourAKShaw profile | Who the emails come from and what you sell (offer up to 500 characters) |
 | `FETCH_MAX_PAGES` | `4` | Pages read per run (1 to 6) |
 | `FETCH_TIMEOUT_SECONDS` | `8` | Per page |
@@ -205,7 +233,7 @@ All settings are environment variables, read from `.env` in the working director
 | `DAILY_RUN_LIMIT` | `25` | Fresh runs per UTC day, sized for Groq's free daily token quota |
 | `MAX_CONCURRENT_RUNS` | `2` | Runs in flight at once |
 | `CACHE_TTL_MINUTES` | `360` | Identical inputs are served from memory; `0` disables |
-| `RUN_TIMEOUT_SECONDS` | `90` | Hard limit for a whole run |
+| `RUN_TIMEOUT_SECONDS` | `90` (`600` with a CLI flag) | Hard limit for a whole run, up to 1200 |
 
 ## 💸 Free model providers
 
