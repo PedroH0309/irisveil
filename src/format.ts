@@ -1,5 +1,6 @@
 import type { IrisResult } from './pipeline.js';
 import { charClass } from './chars.js';
+import { BRAND, style, type ColorDepth } from './theme.js';
 
 /**
  * Renders results for the terminal and as Markdown.
@@ -18,25 +19,6 @@ const CONTROL_CHARS = charClass([
 
 export function safeText(value: string): string {
   return value.replace(CONTROL_CHARS, '');
-}
-
-interface Palette {
-  bold: (s: string) => string;
-  dim: (s: string) => string;
-  accent: (s: string) => string;
-  good: (s: string) => string;
-  warn: (s: string) => string;
-}
-
-function palette(color: boolean): Palette {
-  const wrap = (open: number, close: number) => (s: string) => (color ? `\u001B[${open}m${s}\u001B[${close}m` : s);
-  return {
-    bold: wrap(1, 22),
-    dim: wrap(2, 22),
-    accent: wrap(36, 39),
-    good: wrap(32, 39),
-    warn: wrap(33, 39),
-  };
 }
 
 function wrapText(text: string, width: number, indent = ''): string {
@@ -70,56 +52,65 @@ export function shortUrl(url: string): string {
   }
 }
 
-export function renderTerminal(result: IrisResult, options: { color: boolean; width?: number }): string {
-  const c = palette(options.color);
+/**
+ * The research brief for a terminal. Email subjects and bodies stay plain (no gutter, no box)
+ * so they can be selected and pasted straight into a mail client.
+ */
+export function renderTerminal(result: IrisResult, options: { depth: ColorDepth; width?: number }): string {
+  const s = style(options.depth);
   const width = Math.max(50, Math.min(options.width ?? 88, 100));
-  const out: string[] = [];
-  const rule = c.dim('─'.repeat(Math.min(width, 72)));
   const t = safeText;
+  const out: string[] = [];
+  const heading = (title: string, note: string) => `  ${s.bold(s.fg(BRAND.lilac, title))}  ${s.italic(s.dim(note))}`;
+  const rule = (label: string, meta: string) => {
+    const fill = Math.max(4, Math.min(width, 76) - label.length - meta.length - 9);
+    return `  ${s.fg(BRAND.violet, '──')} ${s.bold(label)} ${s.fg(BRAND.violet, '─'.repeat(fill))} ${s.italic(s.dim(meta))}`;
+  };
 
   out.push('');
-  out.push(`${c.accent(c.bold('IRIS'))}  ${c.bold(t(result.company.name))}`);
-  out.push(wrapText(t(result.company.oneLiner), width));
+  out.push(`  ${s.fg(BRAND.violet, '◆')} ${s.bold(s.fg(BRAND.sky, t(result.company.name)))}`);
+  out.push(s.italic(s.fg(BRAND.lilac, wrapText(t(result.company.oneLiner), width - 4, '    '))));
   out.push('');
 
-  out.push(
-    c.bold('VERIFIED FACTS') +
-      c.dim(`  ${result.stats.signalsVerified} of ${result.stats.signalsProposed} claims matched the source text`),
-  );
+  out.push(heading('VERIFIED FACTS', `${result.stats.signalsVerified} of ${result.stats.signalsProposed} claims matched the source text`));
+  out.push('');
   for (const signal of result.signals) {
-    out.push(`  ${c.good('✓')} ${c.accent(signal.id.padEnd(3))} ${c.dim(signal.category.padEnd(11))} ${t(signal.claim)}`);
-    out.push(c.dim(wrapText(`“${t(signal.quote)}” — ${shortUrl(signal.sourceUrl)}`, width - 8, '        ')));
+    out.push(`  ${s.fg(BRAND.mint, '✓')} ${s.fg(BRAND.glint, signal.id.padEnd(3))} ${s.dim(signal.category.padEnd(11))} ${t(signal.claim)}`);
+    out.push(s.italic(s.dim(wrapText(`“${t(signal.quote)}” — ${shortUrl(signal.sourceUrl)}`, width - 8, '                    '))));
   }
   if (result.dropped.length) {
-    out.push(c.warn(`  ✗ ${result.dropped.length} claim(s) dropped: quote not found on the site`));
+    out.push(`  ${s.fg(BRAND.coral, '✗')} ${s.italic(s.fg(BRAND.coral, `${result.dropped.length} claim(s) dropped: quote not found on the site`))}`);
   }
   out.push('');
 
   if (result.hypotheses.length) {
-    out.push(c.bold('HYPOTHESES') + c.dim('  inferences, not facts'));
+    out.push(heading('HYPOTHESES', 'inferences, not facts'));
+    out.push('');
     for (const h of result.hypotheses) {
-      out.push(wrapText(`• ${t(h.statement)} ${c.dim(`(${h.basedOn.join(', ')} · ${h.confidence})`)}`, width, '  '));
+      out.push(s.italic(s.fg(BRAND.amber, wrapText(`? ${t(h.statement)} (${h.basedOn.join(', ')} · ${h.confidence})`, width, '  '))));
     }
     out.push('');
   }
 
   result.emails.forEach((email, index) => {
-    out.push(rule);
-    out.push(`${c.bold(`EMAIL ${index + 1}`)} ${c.dim('·')} ${c.accent(t(email.angle))}  ${c.dim(`uses ${email.basedOn.join(', ')} · ${email.wordCount} words`)}`);
-    out.push(`${c.dim('Subject:')} ${c.bold(t(email.subject))}`);
+    out.push(rule(`Email ${index + 1} · ${t(email.angle)}`, `uses ${email.basedOn.join(', ')} · ${email.wordCount} words`));
+    out.push('');
+    out.push(`${s.dim('Subject:')} ${s.bold(t(email.subject))}`);
     out.push('');
     out.push(wrapText(t(email.body), width));
     out.push('');
   });
-  out.push(rule);
 
-  for (const warning of result.warnings) out.push(c.warn(`! ${t(warning)}`));
-  out.push(c.dim(`Sources: ${result.sources.map((s) => shortUrl(s.url)).join(', ')}`));
+  for (const warning of result.warnings) out.push(`  ${s.fg(BRAND.amber, '▲')} ${s.italic(s.fg(BRAND.amber, t(warning)))}`);
   const tokens = result.stats.promptTokens + result.stats.completionTokens;
+  out.push(`  ${s.fg(BRAND.violet, '─'.repeat(Math.min(width, 76) - 2))}`);
+  out.push(s.italic(s.dim(wrapText(`sources  ${result.sources.map((src) => shortUrl(src.url)).join('  ·  ')}`, width - 4, '  '))));
   out.push(
-    c.dim(
-      `${result.stats.model} via ${result.stats.provider} · ${result.stats.pagesRead} pages · ` +
-        `${tokens.toLocaleString('en-US')} tokens · ${(result.stats.durationMs / 1000).toFixed(1)}s`,
+    s.italic(
+      s.dim(
+        `  ${result.stats.model} via ${result.stats.provider}  ·  ${result.stats.pagesRead} pages  ·  ` +
+          `${tokens.toLocaleString('en-US')} tokens  ·  ${(result.stats.durationMs / 1000).toFixed(1)}s`,
+      ),
     ),
   );
   out.push('');

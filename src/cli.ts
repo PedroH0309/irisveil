@@ -9,6 +9,7 @@ import { renderMarkdown, renderTerminal, safeText } from './format.js';
 import { createIrisServer, createJsonLogger } from './server.js';
 import { createPrettyLogger, renderBanner, wantsPrettyLogs } from './terminal-log.js';
 import { colorDepth } from './theme.js';
+import { renderFailure, renderNote, renderProgress, renderRunHeader } from './cli-output.js';
 import { VERSION } from './version.js';
 
 const HELP = `Iris ${VERSION}: cited lead research and outreach drafts from a company website.
@@ -37,17 +38,21 @@ Configuration lives in .env (see .env.example). Docs: https://github.com/YourAKS
 
 const EXIT = { ok: 0, failure: 1, usage: 2 } as const;
 
-function useColor(stream: NodeJS.WriteStream): boolean {
-  if (process.env.FORCE_COLOR && process.env.FORCE_COLOR !== '0') return true;
-  return Boolean(stream.isTTY) && !process.env.NO_COLOR && process.env.TERM !== 'dumb';
+/** Banner and styled progress only when a person is watching stderr. */
+function decorated(): boolean {
+  const forced = process.env.FORCE_COLOR && process.env.FORCE_COLOR !== '0';
+  return Boolean(process.stderr.isTTY || forced);
 }
 
 function printError(error: unknown): void {
   const failure = toIrisError(error);
-  const color = useColor(process.stderr);
-  const mark = color ? '\u001B[31m✗\u001B[39m' : '✗';
-  process.stderr.write(`${mark} ${safeText(failure.message)}\n`);
-  if (process.env.IRIS_DEBUG && failure.detail) process.stderr.write(`  detail: ${safeText(failure.detail)}\n`);
+  const detail = process.env.IRIS_DEBUG ? failure.detail : undefined;
+  if (decorated()) {
+    process.stderr.write(renderFailure(failure.message, detail, colorDepth(process.stderr)));
+    return;
+  }
+  process.stderr.write(`✗ ${safeText(failure.message)}\n`);
+  if (detail) process.stderr.write(`  detail: ${safeText(detail)}\n`);
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -115,23 +120,35 @@ async function main(argv: string[]): Promise<number> {
 
   const controller = new AbortController();
   process.once('SIGINT', () => controller.abort());
-  const dim = (s: string) => (useColor(process.stderr) ? `\u001B[2m${s}\u001B[22m` : s);
+  const fancy = decorated() && !values.quiet;
+  const errDepth = colorDepth(process.stderr);
+  const note = (message: string) => process.stderr.write(fancy ? renderNote(message, errDepth) : `› ${safeText(message)}\n`);
+  if (fancy) {
+    process.stderr.write(
+      renderRunHeader(
+        { target: input.url, recipient: input.recipient ?? undefined, provider: config.llm.provider, model: config.llm.model, version: VERSION },
+        errDepth,
+      ),
+    );
+  }
 
   try {
     const result = await runIris(input, {
       config,
       llm: createLlmClient(config.llm),
       signal: controller.signal,
-      onProgress: values.quiet ? undefined : (event) => process.stderr.write(`${dim('›')} ${safeText(event.message)}\n`),
+      onProgress: values.quiet
+        ? undefined
+        : (event) => process.stderr.write(fancy ? renderProgress(event, errDepth) : `› ${safeText(event.message)}\n`),
     });
 
     if (values.json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    else process.stdout.write(renderTerminal(result, { color: useColor(process.stdout), width: process.stdout.columns }));
+    else process.stdout.write(renderTerminal(result, { depth: colorDepth(process.stdout), width: process.stdout.columns }));
 
     if (values.out) {
       const content = values.out.toLowerCase().endsWith('.json') ? `${JSON.stringify(result, null, 2)}\n` : renderMarkdown(result);
       await writeFile(values.out, content, 'utf8');
-      process.stderr.write(`${dim('›')} Saved ${values.out}\n`);
+      note(`Saved ${values.out}`);
     }
     return EXIT.ok;
   } catch (error) {

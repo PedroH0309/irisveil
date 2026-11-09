@@ -89,7 +89,7 @@ describe('format', () => {
   });
 
   it('renders terminal output without escape sequences when colour is off', () => {
-    const output = renderTerminal(sample, { color: false });
+    const output = renderTerminal(sample, { depth: 'none' });
     assert.ok(!output.includes(ESC));
     assert.match(output, /VERIFIED FACTS/);
     assert.match(output, /Subject: About your rockets/);
