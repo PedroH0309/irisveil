@@ -13,7 +13,7 @@ Paste a company's website. IrisVeil reads it, keeps only the claims it can quote
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](.nvmrc)
 [![Runs on free tiers](https://img.shields.io/badge/Cost-%240%20to%20run-5B3FD6?style=flat-square)](#-free-model-providers)
 
-[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Contribute](.github/CONTRIBUTING.md) · [Get help](.github/SUPPORT.md) · [Security](SECURITY.md)
+[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Wiki](https://github.com/YourAKShaw/irisveil/wiki) · [Contribute](.github/CONTRIBUTING.md) · [Get help](.github/SUPPORT.md) · [Security](SECURITY.md)
 
 Built by [YourAKShaw](https://github.com/YourAKShaw), an AI agents and automation studio for founder-led teams.
 
@@ -89,16 +89,16 @@ To get an `irisveil` command on your PATH, run `npm run build && npm link`. Then
 
 ```mermaid
 flowchart LR
-    A[Company URL] --> B[Fetch homepage<br/>+ up to 3 key pages]
-    B --> C[Extract readable text]
-    C --> D[LLM: propose facts<br/>with verbatim quotes]
-    D --> E{Quote found in<br/>fetched text?}
-    E -- no --> X[Drop the claim]
-    E -- yes --> F[Verified facts]
-    F --> G[LLM: draft 3 emails<br/>from verified facts only]
-    G --> H{Rules pass?<br/>no links, no placeholders,<br/>cites a real fact}
-    H -- no, once --> G
-    H -- yes --> I[Brief + drafts]
+    A["Company URL"] --> B["Fetch homepage<br/>+ up to 3 key pages"]
+    B --> C["Extract readable text"]
+    C --> D["LLM: propose facts<br/>with verbatim quotes"]
+    D --> E{"Quote found in<br/>fetched text?"}
+    E -- "no" --> X["Drop the claim"]
+    E -- "yes" --> F["Verified facts"]
+    F --> G["LLM: draft 3 emails<br/>from verified facts only"]
+    G --> H{"Rules pass?<br/>no links, no placeholders,<br/>cites a real fact"}
+    H -- "no, once" --> G
+    H -- "yes" --> I["Brief + drafts"]
 ```
 
 1. **Fetch.** IrisVeil loads the URL you give it, then picks up to three same-site pages most likely to hold useful facts (about, pricing, customers, product, careers) and skips login, legal and file links. Every request goes through SSRF checks, a deadline and a size cap.
@@ -346,7 +346,7 @@ The suite (Node's built-in runner, no network, no API key) covers the IP blockli
 
 - **Website-grounded research instead of web search.** Every fact can be checked deterministically against text IrisVeil fetched itself, for free. Search APIs add cost, keys and sources that can't be verified the same way. Revisit when there's a free search source whose snippets can go through the same verification.
 - **Quote verification in code, not model self-checking.** A second model pass can also hallucinate; a substring check can't. It costs nothing and makes failures visible ("1 dropped").
-- **One OpenAI-compatible client on `fetch`, no SDK.** One code path covers Groq, Gemini, OpenRouter, Ollama and OpenAI, with one runtime dependency (`zod`).
+- **One OpenAI-compatible client on `fetch`, no SDK.** One code path covers Groq, Gemini, OpenRouter, Ollama and OpenAI, with two runtime dependencies: `zod` for validation and `unpdf` for LinkedIn PDFs.
 - **No web framework, no database.** Five routes and in-memory limits fit a single free instance. Move limits to Redis if you ever run more than one instance.
 - **Two model calls per run.** Separating research from drafting is what lets drafting see only verified facts. It's also the smallest number that keeps a run inside free-tier per-minute limits.
 
