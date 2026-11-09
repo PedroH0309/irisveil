@@ -11,6 +11,8 @@ export interface RunInput {
   url: string;
   recipient: string | undefined;
   offer: string | undefined;
+  senderName?: string | undefined;
+  senderCompany?: string | undefined;
 }
 
 export type Stage = 'fetch' | 'research' | 'verify' | 'draft' | 'done';
@@ -23,7 +25,7 @@ export interface ProgressEvent {
 export interface IrisResult {
   schemaVersion: 1;
   generatedAt: string;
-  input: { url: string; recipient: string | null; offer: string };
+  input: { url: string; recipient: string | null; offer: string; senderName: string; senderCompany: string };
   company: CompanyProfile;
   signals: Signal[];
   hypotheses: Hypothesis[];
@@ -51,6 +53,15 @@ export interface RunDeps {
   resolver?: Resolver | undefined;
 }
 
+/** Optional single-line text: whitespace collapsed so it cannot add lines to the prompt. */
+const oneLine = (max: number, message: string) =>
+  z
+    .string()
+    .transform((value) => value.replace(/\s+/g, ' ').trim())
+    .pipe(z.string().max(max, message))
+    .optional()
+    .transform((value) => value || undefined);
+
 const RunInputSchema = z.object({
   url: z
     .string({ error: 'Enter a company website.' })
@@ -69,6 +80,8 @@ const RunInputSchema = z.object({
     .max(LIMITS.offerChars, `Your offer must be ${LIMITS.offerChars} characters or fewer.`)
     .optional()
     .transform((value) => value || undefined),
+  senderName: oneLine(LIMITS.senderNameChars, `Your name must be ${LIMITS.senderNameChars} characters or fewer.`),
+  senderCompany: oneLine(LIMITS.senderCompanyChars, `Your company must be ${LIMITS.senderCompanyChars} characters or fewer.`),
 });
 
 /** Validates untrusted input (CLI args or HTTP body) and normalises the URL. */
@@ -89,7 +102,8 @@ export function parseRunInput(raw: unknown): RunInput {
     throw new IrisError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
   }
   normalized.hash = '';
-  return { url: normalized.toString(), recipient: parsed.data.recipient, offer: parsed.data.offer };
+  const { recipient, offer, senderName, senderCompany } = parsed.data;
+  return { url: normalized.toString(), recipient, offer, senderName, senderCompany };
 }
 
 /** Fetch → research → verify → draft. One run makes two LLM calls (plus at most one repair each). */
@@ -99,7 +113,11 @@ export async function runIris(input: RunInput, deps: RunDeps): Promise<IrisResul
   const emit = (stage: Stage, message: string) => deps.onProgress?.({ stage, message });
   const deadline = AbortSignal.timeout(config.runTimeoutMs);
   const signal = deps.signal ? AbortSignal.any([deps.signal, deadline]) : deadline;
-  const sender = { ...config.sender, offer: input.offer ?? config.sender.offer };
+  const sender = {
+    name: input.senderName ?? config.sender.name,
+    company: input.senderCompany ?? config.sender.company,
+    offer: input.offer ?? config.sender.offer,
+  };
 
   try {
     const host = new URL(input.url).hostname;
@@ -128,7 +146,7 @@ export async function runIris(input: RunInput, deps: RunDeps): Promise<IrisResul
     return {
       schemaVersion: 1,
       generatedAt: new Date().toISOString(),
-      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer },
+      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderCompany: sender.company },
       company: brief.company,
       signals: brief.signals,
       hypotheses: brief.hypotheses,

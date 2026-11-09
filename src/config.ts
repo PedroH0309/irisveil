@@ -118,6 +118,8 @@ export const LIMITS = {
   urlChars: 2048,
   recipientChars: 120,
   offerChars: 500,
+  senderNameChars: 80,
+  senderCompanyChars: 80,
 } as const;
 
 const REASONING_VALUES = new Set(['none', 'minimal', 'low', 'medium', 'high']);
@@ -206,8 +208,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): IrisConfig {
     company: str('SENDER_COMPANY') ?? DEFAULT_SENDER.company,
     offer: str('SENDER_OFFER') ?? DEFAULT_SENDER.offer,
   };
-  if (sender.name.length > 80) problems.push('SENDER_NAME must be 80 characters or fewer.');
-  if (sender.company.length > 80) problems.push('SENDER_COMPANY must be 80 characters or fewer.');
+  if (sender.name.length > LIMITS.senderNameChars) problems.push(`SENDER_NAME must be ${LIMITS.senderNameChars} characters or fewer.`);
+  if (sender.company.length > LIMITS.senderCompanyChars) {
+    problems.push(`SENDER_COMPANY must be ${LIMITS.senderCompanyChars} characters or fewer.`);
+  }
   if (sender.offer.length > LIMITS.offerChars) {
     problems.push(`SENDER_OFFER must be ${LIMITS.offerChars} characters or fewer.`);
   }

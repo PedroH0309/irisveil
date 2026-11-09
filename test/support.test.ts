@@ -72,7 +72,7 @@ describe('TtlCache', () => {
 const sample: IrisResult = {
   schemaVersion: 1,
   generatedAt: '2026-10-19T00:00:00.000Z',
-  input: { url: 'https://acme.example/', recipient: null, offer: 'offer' },
+  input: { url: 'https://acme.example/', recipient: null, offer: 'offer', senderName: 'Ayush', senderCompany: 'YourAKShaw' },
   company: { name: `Acme${ESC}[31m`, oneLiner: `Rockets${RLO}evil`, offering: '', audience: '' },
   signals: [{ id: 's1', category: 'product', claim: 'Makes rockets', quote: 'We make rockets for road runners', sourceUrl: 'https://acme.example/' }],
   hypotheses: [{ statement: 'Needs more coyotes', basedOn: ['s1'], confidence: 'low' }],
@@ -147,6 +147,13 @@ describe('parseRunInput', () => {
     const input = parseRunInput({ url: 'acme.example', recipient: '  ', offer: '' });
     assert.equal(input.recipient, undefined);
     assert.equal(input.offer, undefined);
+  });
+  it('accepts a per-run sender name and company on one line', () => {
+    const input = parseRunInput({ url: 'acme.example', senderName: ' Ayush\n  Shaw ', senderCompany: 'YourAKShaw', offer: '' });
+    assert.equal(input.senderName, 'Ayush Shaw', 'newlines cannot add lines to the prompt');
+    assert.equal(input.senderCompany, 'YourAKShaw');
+    assert.equal(parseRunInput({ url: 'acme.example', senderName: '   ' }).senderName, undefined);
+    assert.throws(() => parseRunInput({ url: 'acme.example', senderCompany: 'x'.repeat(81) }), /80 characters/);
   });
 });
 

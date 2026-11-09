@@ -120,7 +120,7 @@ Progress goes to stderr and the result to stdout, so `iris acme.com --json -q | 
 | `GET /` | The web app |
 | `GET /healthz` | Health check: `{"status":"ok","version":"1.0.0"}` |
 | `GET /api/meta` | Model, provider, sender profile and today's remaining demo runs |
-| `POST /api/runs` | Start a run. Body: `{"url": "...", "recipient": "Name, Role", "offer": "..."}` (only `url` is required) |
+| `POST /api/runs` | Start a run. Body: `{"url": "...", "recipient": "Name, Role", "offer": "...", "senderName": "...", "senderCompany": "..."}` (only `url` is required; sender fields default to `.env`) |
 
 `POST /api/runs` streams [newline-delimited JSON](https://github.com/ndjson/ndjson-spec): progress events, then one `result` or `error` event.
 

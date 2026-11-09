@@ -25,6 +25,19 @@ describe('runIris end to end', () => {
     await llm.close();
   });
 
+  it('signs drafts with the sender from the run input, not only .env', async () => {
+    const config = testConfig(llm.url);
+    const before = llm.calls.length;
+    const result = await runIris(parseRunInput({ url: `${site.origin}/`, senderName: 'Dana Lee', senderCompany: 'Lee Labs' }), {
+      config,
+      llm: createLlmClient(config.llm),
+    });
+    const prompts = llm.calls.slice(before).map((call) => call.messages[0]!.content).join('\n');
+    assert.match(prompts, /Dana Lee at Lee Labs/);
+    assert.equal(result.input.senderName, 'Dana Lee');
+    assert.equal(result.input.senderCompany, 'Lee Labs');
+  });
+
   it('produces a verified brief and grounded drafts', async () => {
     const config = testConfig(llm.url);
     const progress: ProgressEvent[] = [];

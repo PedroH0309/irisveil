@@ -214,7 +214,11 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     }
 
     const offer = input.offer ?? config.sender.offer;
-    const cacheKey = createHash('sha256').update(JSON.stringify([input.url, input.recipient ?? '', offer, llm.model])).digest('hex');
+    const senderName = input.senderName ?? config.sender.name;
+    const senderCompany = input.senderCompany ?? config.sender.company;
+    const cacheKey = createHash('sha256')
+      .update(JSON.stringify([input.url, input.recipient ?? '', offer, senderName, senderCompany, llm.model]))
+      .digest('hex');
     const host = new URL(input.url).hostname;
     const cached = cache.get(cacheKey);
     if (cached) {
