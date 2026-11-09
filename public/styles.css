@@ -309,6 +309,9 @@ button:disabled {
   gap: 16px;
   margin-top: 18px;
 }
+.field-pair.even {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
 
 .examples {
   margin: 16px 0 0;
@@ -691,7 +694,8 @@ h3 {
 }
 
 @media (max-width: 600px) {
-  .field-pair {
+  .field-pair,
+  .field-pair.even {
     grid-template-columns: minmax(0, 1fr);
   }
   .url-row {

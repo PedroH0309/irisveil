@@ -8,6 +8,8 @@
   const urlInput = $('url');
   const recipientInput = $('recipient');
   const offerInput = $('offer');
+  const senderNameInput = $('sender-name');
+  const senderCompanyInput = $('sender-company');
   const submitButton = $('submit');
   const log = $('log');
   const errorBox = $('error');
@@ -334,7 +336,13 @@
       const response = await fetch('/api/runs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url, recipient: recipientInput.value.trim(), offer: offerInput.value.trim() }),
+        body: JSON.stringify({
+          url,
+          recipient: recipientInput.value.trim(),
+          offer: offerInput.value.trim(),
+          senderName: senderNameInput.value.trim(),
+          senderCompany: senderCompanyInput.value.trim(),
+        }),
       });
 
       const type = response.headers.get('content-type') || '';
@@ -382,11 +390,13 @@
     });
   }
 
-  // Prefill the offer and show today's remaining demo runs.
+  // Prefill the sender and offer, and show today's remaining demo runs.
   fetch('/api/meta')
     .then((response) => (response.ok ? response.json() : null))
     .then((meta) => {
       if (!meta) return;
+      if (!senderNameInput.value) senderNameInput.value = meta.sender.name;
+      if (!senderCompanyInput.value) senderCompanyInput.value = meta.sender.company;
       if (!offerInput.value) offerInput.value = meta.sender.offer;
       offerInput.placeholder = `What ${meta.sender.company} sells, in a sentence or two`;
       $('quota').textContent = `${meta.limits.dailyRemaining} demo runs left today.`;
