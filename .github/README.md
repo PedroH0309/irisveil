@@ -155,6 +155,7 @@ All settings are environment variables, read from `.env` in the working director
 | `FETCH_TIMEOUT_SECONDS` | `8` | Per page |
 | `IRIS_ALLOW_PRIVATE_HOSTS` | `false` | **Tests only.** Turns SSRF protection off |
 | `HOST`, `PORT` | `127.0.0.1`, `3000` | Web server bind address. Use `HOST=0.0.0.0` in containers and on hosts |
+| `IRIS_LOG_FORMAT` | auto | Server logs: `pretty` in a terminal, `json` when piped or deployed. Set either to force it |
 | `TRUST_PROXY_HOPS` | `0` | Reverse proxies in front of the app, for client IPs (Render: `1`) |
 | `RATE_LIMIT_PER_IP`, `RATE_LIMIT_WINDOW_MINUTES` | `5`, `10` | Runs per client IP per window |
 | `DAILY_RUN_LIMIT` | `25` | Fresh runs per UTC day, sized for Groq's free daily token quota |
