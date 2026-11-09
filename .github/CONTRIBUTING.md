@@ -67,6 +67,14 @@ The test suite needs no API key and no internet access. It starts a local fixtur
 4. Run `npm run check && npm run build` and read your full diff.
 5. Open a pull request using the [template](pull_request_template.md).
 
+### Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) with a scope, one logical change per commit, and a `Breaking: none` line unless the change is breaking. Commits written with an AI agent end with exactly this trailer:
+
+```text
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+```
+
 ### Keep these properties intact
 
 | Property | What to preserve |
