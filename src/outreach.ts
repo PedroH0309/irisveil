@@ -178,6 +178,7 @@ Hard rules:
 - Mention only facts from the VERIFIED FACTS list. Never invent metrics, customers, funding, news, mutual connections or compliments.
 - Each email lists in "basedOn" the fact ids it relies on (at least one). Never write fact ids (s1, S2, [s3]) in the subject or body: the recipient must not see them.
 - Hypotheses are guesses: phrase them as a question or "I'd guess", never as fact.
+- Facts tagged [person] come from the recipient's public profile. When present, open at least one email with one of them, briefly and professionally (for example their role or a post on a work topic), then tie it to the company. Never sound like you studied their profile closely.
 - Body: 60 to 130 words. Subject: under 60 characters, specific, no clickbait, no emojis, no ALL CAPS.
 - Plain text only: no links or URLs, no placeholders like [Name], no markdown.
 - Open with the specific fact, connect it to one concrete way ${sender.company} could help, end with one low-friction ask (a reply or a 15-minute call).
