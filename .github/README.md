@@ -56,13 +56,13 @@ Open `.env` and set `LLM_API_KEY` to your Groq key. Set `SENDER_NAME`, `SENDER_C
 
 ```sh
 # Research a company in the terminal
-npm run dev -- linear.app --to "Priya Rao, Head of Growth"
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer"
 
 # Also research the person, from their LinkedIn or X profile
-npm run dev -- linear.app --to "Priya Rao, Head of Growth" --linkedin linkedin.com/in/priya-rao
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin https://www.linkedin.com/in/cristinajcordova
 
 # Or from both
-npm run dev -- linear.app --to "Priya Rao, Head of Growth" --linkedin linkedin.com/in/priya-rao --x @priyarao
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin https://www.linkedin.com/in/cristinajcordova --x https://x.com/cjc
 
 # Or start the web app at http://127.0.0.1:3000
 npm run dev:serve
@@ -108,7 +108,7 @@ A run makes **two model calls** (plus at most one repair each) and typically use
 iris <company-url> [options]     Research a company and draft 3 outreach emails
 iris serve [--port N] [--host H] Start the web app
 
--t, --to <"Name, Role">   Who the emails are for, e.g. "Priya Rao, Head of Growth"
+-t, --to <"Name, Role">   Who the emails are for, e.g. "Cristina Cordova, Chief Operating Officer"
 -o, --offer <text>        What you sell (defaults to SENDER_OFFER)
     --linkedin <url>      Recipient's LinkedIn profile, researched for personal context
     --x <url|@handle>     Recipient's X profile, researched for personal context
@@ -141,7 +141,7 @@ Progress goes to stderr and the result to stdout, so `iris acme.com --json -q | 
 ```sh
 curl -N -X POST http://127.0.0.1:3000/api/runs \
   -H 'content-type: application/json' \
-  -d '{"url":"posthog.com","recipient":"Priya Rao, Head of Growth"}'
+  -d '{"url":"posthog.com","recipient":"Cristina Cordova, Chief Operating Officer"}'
 ```
 
 ```json

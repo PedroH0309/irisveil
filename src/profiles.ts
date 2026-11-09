@@ -32,7 +32,7 @@ export function normalizeProfileUrl(network: ProfileNetwork, raw: string): strin
       ? (host === 'linkedin.com' || host.endsWith('.linkedin.com')) && /^\/in\/[^/]+/.test(url.pathname)
       : (host === 'x.com' || host === 'twitter.com') && /^\/[A-Za-z0-9_]{1,15}\/?$/.test(url.pathname);
   if (!ok) {
-    const example = network === 'linkedin' ? 'https://www.linkedin.com/in/priya-rao' : 'https://x.com/priyarao or @priyarao';
+    const example = network === 'linkedin' ? 'https://www.linkedin.com/in/cristinajcordova' : 'https://x.com/cjc or @cjc';
     throw new IrisError('INVALID_INPUT', `Enter a ${NETWORK_LABEL[network]} profile, for example ${example}.`);
   }
   url.protocol = 'https:';

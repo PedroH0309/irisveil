@@ -20,7 +20,7 @@ Usage
   iris serve [--port N] [--host H] Start the web app (default http://127.0.0.1:3000)
 
 Options
-  -t, --to <"Name, Role">   Who the emails are for, e.g. "Priya Rao, Head of Growth"
+  -t, --to <"Name, Role">   Who the emails are for, e.g. "Cristina Cordova, Chief Operating Officer"
   -o, --offer <text>        What you sell (defaults to SENDER_OFFER in .env)
       --linkedin <url>      Recipient's LinkedIn profile, researched for personal context
       --x <url|@handle>     Recipient's X profile, researched for personal context
@@ -34,9 +34,9 @@ Options
 
 Examples
   iris linear.app
-  iris https://posthog.com --to "Priya Rao, Head of Growth" --out posthog.md
-  iris linear.app --to "Priya Rao" --linkedin linkedin.com/in/priya-rao
-  iris linear.app --to "Priya Rao" --linkedin linkedin.com/in/priya-rao --x @priyarao
+  iris https://posthog.com --to "Cristina Cordova, Chief Operating Officer" --out posthog.md
+  iris linear.app --to "Cristina Cordova" --linkedin https://www.linkedin.com/in/cristinajcordova
+  iris linear.app --to "Cristina Cordova" --linkedin https://www.linkedin.com/in/cristinajcordova --x https://x.com/cjc
   iris serve --port 8080
 
 Configuration lives in .env (see .env.example). Docs: https://github.com/YourAKShaw/iris`;
