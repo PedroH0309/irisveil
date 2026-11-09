@@ -41,7 +41,23 @@
         </p>
 
         <form id="run-form" class="run-form" novalidate>
-          <div class="field">
+          <div class="field-pair even first">
+            <div class="field">
+              <label for="sender-name">Your name</label>
+              <input id="sender-name" name="senderName" type="text" maxlength="80" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="sender-company">Your company</label>
+              <input id="sender-company" name="senderCompany" type="text" maxlength="80" autocomplete="organization" />
+            </div>
+          </div>
+
+          <div class="field spaced">
+            <label for="offer">What you’re offering</label>
+            <textarea id="offer" name="offer" rows="3" maxlength="500"></textarea>
+          </div>
+
+          <div class="field spaced">
             <label for="url">Company website</label>
             <div class="url-row">
               <input
@@ -56,38 +72,23 @@
                 maxlength="2048"
                 required
               />
-              <button type="submit" id="submit" class="primary">Research</button>
             </div>
+            <p class="examples">
+              Or try
+              <button type="button" class="example" data-url="linear.app">linear.app</button>,
+              <button type="button" class="example" data-url="posthog.com">posthog.com</button> or
+              <button type="button" class="example" data-url="resend.com">resend.com</button>.
+            </p>
           </div>
 
-          <div class="field-pair">
-            <div class="field">
-              <label for="recipient">Who it’s for <span class="optional">(optional)</span></label>
-              <input id="recipient" name="recipient" type="text" placeholder="Priya Rao, Head of Growth" maxlength="120" autocomplete="off" />
-            </div>
-            <div class="field">
-              <label for="offer">What you’re offering</label>
-              <textarea id="offer" name="offer" rows="3" maxlength="500"></textarea>
-            </div>
+          <div class="field spaced">
+            <label for="recipient">Who it’s for <span class="optional">(optional)</span></label>
+            <input id="recipient" name="recipient" type="text" placeholder="Priya Rao, Head of Growth" maxlength="120" autocomplete="off" />
           </div>
 
-          <div class="field-pair even">
-            <div class="field">
-              <label for="sender-name">Your name</label>
-              <input id="sender-name" name="senderName" type="text" maxlength="80" autocomplete="name" />
-            </div>
-            <div class="field">
-              <label for="sender-company">Your company</label>
-              <input id="sender-company" name="senderCompany" type="text" maxlength="80" autocomplete="organization" />
-            </div>
+          <div class="form-actions">
+            <button type="submit" id="submit" class="primary">Research</button>
           </div>
-
-          <p class="examples">
-            Or try
-            <button type="button" class="example" data-url="linear.app">linear.app</button>,
-            <button type="button" class="example" data-url="posthog.com">posthog.com</button> or
-            <button type="button" class="example" data-url="resend.com">resend.com</button>.
-          </p>
         </form>
       </section>
 

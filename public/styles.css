@@ -312,9 +312,20 @@ button:disabled {
 .field-pair.even {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
+.field-pair.first {
+  margin-top: 0;
+}
+.field.spaced {
+  margin-top: 18px;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
 
 .examples {
-  margin: 16px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
   font-size: 0.9375rem;
 }
