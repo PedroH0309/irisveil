@@ -12,7 +12,7 @@
 
 ## Checklist
 
-- [ ] The change is focused, and docs (`.github/README.md`, `.env.example`) match the new behavior.
+- [ ] The change is focused, and docs (`README.md`, `.env.example`) match the new behavior.
 - [ ] `npm run check` passes (type-check, lint, tests) and `npm run build` succeeds.
 - [ ] New behavior has tests at the boundary it changes (fetching, verification, drafting, HTTP).
 - [ ] Prompt or model changes were tried on at least one real website, and the result is described above.

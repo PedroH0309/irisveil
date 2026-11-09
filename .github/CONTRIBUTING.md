@@ -8,7 +8,7 @@
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](../.nvmrc)
 [![License: MIT](https://img.shields.io/badge/License-MIT-5B3FD6?style=flat-square)](../LICENSE)
 
-[Project overview](README.md) · [Get help](SUPPORT.md) · [Security policy](SECURITY.md)
+[Project overview](../README.md) · [Get help](SUPPORT.md) · [Security policy](../SECURITY.md)
 
 </div>
 
@@ -33,7 +33,7 @@ Useful contributions include:
 | Small fix or doc correction | Open a pull request with the problem and how you verified the fix. |
 | Bug, bad output on a real site, or doc issue | Search existing issues, then use the matching [issue form](https://github.com/YourAKShaw/iris/issues/new/choose). |
 | New feature, new dependency, or a change to the result JSON | Open an issue first with the use case, trade-offs and proposed scope. |
-| Security vulnerability | Report it privately; see [SECURITY.md](SECURITY.md). |
+| Security vulnerability | Report it privately; see [SECURITY.md](../SECURITY.md). |
 | Usage question | Follow the [support guide](SUPPORT.md). |
 
 ## 🛠️ Set up a development environment
@@ -62,7 +62,7 @@ The test suite needs no API key and no internet access. It starts a local fixtur
 ## Make a focused change
 
 1. Fork the repository and create a branch.
-2. Read the module you are changing and its tests. The pipeline is described in the [README](README.md#-how-it-works).
+2. Read the module you are changing and its tests. The pipeline is described in the [README](../README.md#-how-it-works).
 3. Make the smallest coherent change. Add or update tests at the boundary you touched.
 4. Run `npm run check && npm run build` and read your full diff.
 5. Open a pull request using the [template](pull_request_template.md).

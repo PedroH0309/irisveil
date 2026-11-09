@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../public/favicon.svg" width="112" height="112" alt="Iris logo: a violet ring around a violet iris with a dark pupil and a yellow glint">
+<img src="public/favicon.svg" width="112" height="112" alt="Iris logo: a violet ring around a violet iris with a dark pupil and a yellow glint">
 
 # Iris
 
@@ -9,11 +9,11 @@
 Paste a company's website. Iris reads it, keeps only the claims it can quote word for word, and drafts three first-touch emails from them.
 
 [![CI](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml/badge.svg)](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-5B3FD6?style=flat-square)](../LICENSE)
-[![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](../.nvmrc)
+[![License: MIT](https://img.shields.io/badge/License-MIT-5B3FD6?style=flat-square)](LICENSE)
+[![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](.nvmrc)
 [![Runs on free tiers](https://img.shields.io/badge/Cost-%240%20to%20run-5B3FD6?style=flat-square)](#-free-model-providers)
 
-[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Contribute](CONTRIBUTING.md) · [Get help](SUPPORT.md)
+[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Contribute](.github/CONTRIBUTING.md) · [Get help](.github/SUPPORT.md)
 
 Built by [YourAKShaw](https://github.com/YourAKShaw), an AI agents and automation studio for founder-led teams.
 
@@ -21,7 +21,7 @@ Built by [YourAKShaw](https://github.com/YourAKShaw), an AI agents and automatio
 
 ---
 
-![Iris results: verified facts with highlighted source quotes on the left, an email draft on the right citing fact 3](../docs/screenshot.png)
+![Iris results: verified facts with highlighted source quotes on the left, an email draft on the right citing fact 3](docs/screenshot.png)
 
 <sub>Screenshot from the bundled test fixture: a fictional company served locally, so the source links read 127.0.0.1.</sub>
 
@@ -206,7 +206,7 @@ curl -N -X POST http://127.0.0.1:3000/api/runs \
 {"type":"result","cached":false,"result":{"company":{},"signals":[],"emails":[],"stats":{}},"markdown":"# ..."}
 ```
 
-Requests that fail validation or limits before a run starts get a normal JSON error with an HTTP status (400, 403, 429 with `Retry-After`, 503). The full result shape is the `IrisResult` type in [`src/pipeline.ts`](../src/pipeline.ts).
+Requests that fail validation or limits before a run starts get a normal JSON error with an HTTP status (400, 403, 429 with `Retry-After`, 503). The full result shape is the `IrisResult` type in [`src/pipeline.ts`](src/pipeline.ts).
 
 ## ⚙️ Configuration
 
@@ -248,7 +248,7 @@ Iris talks to any OpenAI-compatible chat-completions API. These options cost not
 
 ## ☁️ Deploy it free on Render
 
-[Render's free web services](https://render.com/docs/free) get 750 instance hours a month, which is enough for one always-available demo. The repo includes a Blueprint ([`render.yaml`](../render.yaml)).
+[Render's free web services](https://render.com/docs/free) get 750 instance hours a month, which is enough for one always-available demo. The repo includes a Blueprint ([`render.yaml`](render.yaml)).
 
 1. Push this repository to your GitHub account.
 2. In Render, choose **New → Blueprint**, connect the repository, and confirm the `iris` service.
@@ -349,8 +349,8 @@ The suite (Node's built-in runner, no network, no API key) covers the IP blockli
 
 ## 🤝 Contributing and support
 
-Contributions are welcome, especially real sites where extraction or verification goes wrong. Start with the [contribution guide](CONTRIBUTING.md), use the [issue forms](https://github.com/YourAKShaw/iris/issues/new/choose), or read the [support guide](SUPPORT.md). Report vulnerabilities privately per [SECURITY.md](SECURITY.md).
+Contributions are welcome, especially real sites where extraction or verification goes wrong. Start with the [contribution guide](.github/CONTRIBUTING.md), use the [issue forms](https://github.com/YourAKShaw/iris/issues/new/choose), or read the [support guide](.github/SUPPORT.md). Report vulnerabilities privately per [SECURITY.md](SECURITY.md).
 
 ## License
 
-Distributed under the **MIT License**. See [LICENSE](../LICENSE). Bundled fonts (Newsreader, Hanken Grotesk) are under the SIL Open Font License; see [`public/fonts/`](../public/fonts/).
+Distributed under the **MIT License**. See [LICENSE](LICENSE). Bundled fonts (Newsreader, Hanken Grotesk) are under the SIL Open Font License; see [`public/fonts/`](public/fonts/).
