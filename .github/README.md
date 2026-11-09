@@ -58,11 +58,12 @@ Open `.env` and set `LLM_API_KEY` to your Groq key. Set `SENDER_NAME`, `SENDER_C
 # Research a company in the terminal
 npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer"
 
-# Also research the person, from their LinkedIn or X profile
-npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin https://www.linkedin.com/in/cristinajcordova
+# Also research the person, from their LinkedIn PDF or X Markdown export (see below)
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin ~/Downloads/Profile.pdf
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --x ~/Downloads/cjc.md
 
 # Or from both
-npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin https://www.linkedin.com/in/cristinajcordova --x https://x.com/cjc
+npm run dev -- linear.app --to "Cristina Cordova, Chief Operating Officer" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
 
 # Or start the web app at http://127.0.0.1:3000
 npm run dev:serve
@@ -110,18 +111,45 @@ iris serve [--port N] [--host H] Start the web app
 
 -t, --to <"Name, Role">   Who the emails are for, e.g. "Cristina Cordova, Chief Operating Officer"
 -o, --offer <text>        What you sell (defaults to SENDER_OFFER)
-    --linkedin <url>      Recipient's LinkedIn profile, researched for personal context
-    --x <url|@handle>     Recipient's X profile, researched for personal context
+    --linkedin <file>     Path to the recipient's LinkedIn PDF (profile → More → Save to PDF)
+    --x <file>            Path to a Markdown export of the recipient's X profile, made with Grok
     --out <file>          Also save the result (.md for Markdown, .json for JSON)
     --json                Print the full result as JSON
 -q, --quiet               Hide progress messages
 ```
 
-### Researching the person, not just the company
+### Personalise with LinkedIn and X
 
-Pass `--linkedin`, `--x`, or both (in the web app, fill the optional "Their LinkedIn" and "Their X" fields). Iris reads each public profile alongside the company site and keeps 1 to 3 professional facts about the person, such as their role, past companies or posts on work topics, under the same rule: every fact needs a verbatim quote from the profile page. Every draft is still built on company facts; when profile facts exist, every draft also weaves in at least one of them, and across the three drafts each profile that was read gets used. Iris checks this and asks the model to rewrite drafts that miss it. Personal details (family, health, politics, religion, location) are never used.
+LinkedIn and X block automated reads, so Iris takes the recipient's profiles as files instead. Use either one, or both.
 
-LinkedIn and X often hide profiles from logged-out visitors. When a profile can't be read, Iris says so in the result's warnings and writes the drafts from company research alone; the run never fails because of a profile.
+**LinkedIn.** Every profile can be saved as a PDF resume: open the person's profile, click **More**, then **Save to PDF**. Pass the downloaded file with `--linkedin ~/Downloads/Profile.pdf`, or upload it in the web app's "Their LinkedIn PDF" field.
+
+**X.** Grok can read X, so ask it for a Markdown export. Paste this prompt into [Grok](https://grok.com), replace `USERNAME` with their handle (without the @), and download the answer as a `.md` file (or copy it into one):
+
+```text
+Create a Markdown profile export of the X account @USERNAME for B2B sales research.
+Include only professional, publicly posted information. Use these sections:
+
+# @USERNAME
+## Bio
+Their current bio, copied exactly.
+## Role and company
+Current role, company and past companies, as stated on X.
+## Topics they post about
+3 to 6 work topics, one line each.
+## Recent posts
+10 recent original posts about work, product, industry or hiring. Copy each
+post's text exactly, word for word, with its date. Skip replies and reposts.
+
+Do not paraphrase quoted text, do not guess, and leave out personal life,
+family, health, politics, religion and location. Output only the Markdown.
+```
+
+Pass it with `--x ~/Downloads/USERNAME.md`, or upload it in the web app's "Their X profile (.md)" field. Each file can be up to 2 MB.
+
+Iris reads each file alongside the company site and keeps 1 to 3 professional facts from each, such as their role, past companies or posts on work topics, under the same rule: every fact needs a verbatim quote from the file. Every draft is still built on company facts; when profile facts exist, every draft also weaves in at least one of them, and across the three drafts each profile that was read gets used. Iris checks this and asks the model to rewrite drafts that miss it. Personal details (family, health, politics, religion, location) are never used.
+
+A file of the wrong kind (say, a Markdown file given as the LinkedIn PDF) stops the run with a clear message. When a file has nothing usable, Iris says so in the result's warnings and writes the drafts from company research alone.
 
 Progress goes to stderr and the result to stdout, so `iris acme.com --json -q | jq '.emails[0]'` works. Exit codes: `0` success, `1` the run failed (unreachable site, model error), `2` usage or configuration error, `130` cancelled with Ctrl+C. Set `IRIS_DEBUG=1` to print operator detail behind an error.
 
@@ -134,7 +162,7 @@ Progress goes to stderr and the result to stdout, so `iris acme.com --json -q | 
 | `GET /` | The web app |
 | `GET /healthz` | Health check: `{"status":"ok","version":"1.0.0"}` |
 | `GET /api/meta` | Model, provider, sender profile and today's remaining demo runs |
-| `POST /api/runs` | Start a run. Body: `{"url": "...", "recipient": "Name, Role", "offer": "...", "senderName": "...", "senderCompany": "...", "linkedin": "...", "x": "..."}` (only `url` is required; sender fields default to `.env`; profiles are optional) |
+| `POST /api/runs` | Start a run. Body: `{"url": "...", "recipient": "Name, Role", "offer": "...", "senderName": "...", "senderCompany": "...", "linkedin": {"name": "Profile.pdf", "data": "<base64>"}, "x": {"name": "cjc.md", "data": "<base64>"}}` (only `url` is required; sender fields default to `.env`; profile files are optional, up to 2 MB each) |
 
 `POST /api/runs` streams [newline-delimited JSON](https://github.com/ndjson/ndjson-spec): progress events, then one `result` or `error` event.
 
@@ -210,7 +238,7 @@ Iris fetches URLs that strangers type and feeds the pages to a model, so the des
 - **SSRF:** http(s) on ports 80/443 only, no credentials in URLs, and the resolved IP is checked at connect time, which also blocks DNS rebinding, on every redirect. Private, loopback, link-local (including cloud metadata), CGNAT and reserved ranges are refused.
 - **Prompt injection:** page text is labelled untrusted, the model has no tools, outputs are schema-validated, facts must be verbatim quotes, and drafts with links are repaired or discarded. The test suite includes a page that tells the model to put a phishing link in every email.
 - **Output safety:** the browser renders with `textContent` under a strict CSP, and the terminal strips control and bidi characters.
-- **Abuse and cost:** same-origin JSON-only POSTs, an 8 KB body cap, per-IP limits, a concurrency cap, a daily budget, a cache, and runs abort when the visitor disconnects.
+- **Abuse and cost:** same-origin JSON-only POSTs, a 6 MB body cap (room for two 2 MB profile files; PDFs are parsed with script evaluation off), per-IP limits, a concurrency cap, a daily budget, a cache, and runs abort when the visitor disconnects.
 - **Data:** no database. Page text, any recipient profile text, your offer and the recipient name go to your LLM provider. Results live in memory for the cache window, and logs record hostname, outcome, timing and tokens only.
 
 Details and reporting: [SECURITY.md](SECURITY.md).
@@ -220,7 +248,7 @@ Details and reporting: [SECURITY.md](SECURITY.md).
 Being explicit about these is part of the design:
 
 - **Verification proves the quote exists, not that the claim is faithful.** The model writes a one-line claim next to each quote; read the quote, and read every draft before sending.
-- **The website is the only source.** No news, funding or LinkedIn data. That's deliberate for v1: those sources can't be verified the same way for free. See the roadmap.
+- **The website, plus any profile files you give, is the only source.** No news or funding data. That's deliberate for v1: those sources can't be verified the same way for free. See the roadmap.
 - **JavaScript-only sites** that render nothing server-side return "not enough readable text". Iris doesn't run a browser.
 - **Some sites block bots** and return 403s. Iris identifies itself honestly as `IrisBot` rather than impersonating a browser.
 - **Prompts are tuned for English.**
