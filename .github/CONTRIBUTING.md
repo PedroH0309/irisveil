@@ -36,6 +36,12 @@ Useful contributions include:
 | Security vulnerability | Report it privately; see [SECURITY.md](../SECURITY.md). |
 | Usage question | Follow the [support guide](SUPPORT.md). |
 
+## 📜 Contributor License Agreement
+
+Before your first pull request can be merged, you sign the [Contributor License Agreement](../CLA.md) once. A bot comments on your pull request with the link; reply with the sentence it gives, and you are done for all future contributions.
+
+The CLA keeps IrisVeil open source under the AGPL-3.0 and lets the maintainer also offer it under other terms, such as a hosted service. You keep the copyright in your work.
+
 ## 🛠️ Set up a development environment
 
 Requirements: **Node.js 22.12 or later** (`.nvmrc` pins 22) and npm.

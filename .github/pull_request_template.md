@@ -17,3 +17,4 @@
 - [ ] New behavior has tests at the boundary it changes (fetching, verification, drafting, HTTP).
 - [ ] Prompt or model changes were tried on at least one real website, and the result is described above.
 - [ ] No secrets, private URLs or personal data in code, fixtures, screenshots or this description.
+- [ ] I have signed the [Contributor License Agreement](https://github.com/YourAKShaw/irisveil/blob/main/CLA.md), or will when the CLA bot asks.
