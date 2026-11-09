@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEmail, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
+import { checkEmail, formatEmailBody, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
 
 const ids = new Set(['s1', 's2']);
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
@@ -80,5 +80,22 @@ describe('fact ids in drafts', () => {
     assert.equal(mentionsFactIds(text, ten), false);
     assert.equal(stripFactIds(text, ten), text);
     assert.equal(stripFactIds('We shipped 1 thing (1).', new Set(['1'])), 'We shipped 1 thing.', 'numeric ids only go when bracketed');
+  });
+});
+
+describe('formatEmailBody', () => {
+  const sender = { name: 'Ayush', company: 'YourAKShaw' };
+
+  it('splits the greeting, joins hard-wrapped lines and adds one sign-off', () => {
+    const raw = 'Hi Priya, I saw you are hiring\nfield engineers.\nThat is a lot of scheduling.\n\nWorth a call?\n\nCheers,\nAyush\nYourAKShaw';
+    assert.equal(
+      formatEmailBody(raw, sender),
+      'Hi Priya,\n\nI saw you are hiring field engineers. That is a lot of scheduling.\n\nWorth a call?\n\nBest,\nAyush\nYourAKShaw',
+    );
+  });
+
+  it('leaves a well-formed body alone apart from the sign-off', () => {
+    const raw = 'Hi Priya,\n\nFirst paragraph.\n\nSecond paragraph.';
+    assert.equal(formatEmailBody(raw, sender), `${raw}\n\nBest,\nAyush\nYourAKShaw`);
   });
 });

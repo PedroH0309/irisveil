@@ -97,7 +97,8 @@ export function renderTerminal(result: IrisResult, options: { depth: ColorDepth;
     out.push('');
     out.push(`${s.dim('Subject:')} ${s.bold(t(email.subject))}`);
     out.push('');
-    out.push(wrapText(t(email.body), width));
+    // No hard wrapping: the terminal soft-wraps, so a copied paragraph stays one line.
+    out.push(t(email.body));
     out.push('');
   });
 
