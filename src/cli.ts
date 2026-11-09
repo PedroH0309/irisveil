@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 import { loadConfig, loadDotEnv, type IrisConfig } from './config.js';
-import { isIrisError, toIrisError } from './errors.js';
+import { IrisError, isIrisError, toIrisError } from './errors.js';
 import { createLlmClient } from './llm.js';
 import { parseRunInput, runIris } from './pipeline.js';
 import { renderMarkdown, renderTerminal, safeText } from './format.js';
@@ -22,8 +23,8 @@ Usage
 Options
   -t, --to <"Name, Role">   Who the emails are for, e.g. "Cristina Cordova, Chief Operating Officer"
   -o, --offer <text>        What you sell (defaults to SENDER_OFFER in .env)
-      --linkedin <url>      Recipient's LinkedIn profile, researched for personal context
-      --x <url|@handle>     Recipient's X profile, researched for personal context
+      --linkedin <file>     Path to the recipient's LinkedIn PDF (profile → More → Save to PDF)
+      --x <file>            Path to a Markdown export of the recipient's X profile, made with Grok
       --out <file>          Also save the result (.md for Markdown, .json for JSON)
       --json                Print the full result as JSON instead of the formatted view
   -q, --quiet               Hide progress messages
@@ -35,8 +36,9 @@ Options
 Examples
   iris linear.app
   iris https://posthog.com --to "Cristina Cordova, Chief Operating Officer" --out posthog.md
-  iris linear.app --to "Cristina Cordova" --linkedin https://www.linkedin.com/in/cristinajcordova
-  iris linear.app --to "Cristina Cordova" --linkedin https://www.linkedin.com/in/cristinajcordova --x https://x.com/cjc
+  iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf
+  iris linear.app --to "Cristina Cordova" --x ~/Downloads/cjc.md
+  iris linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
   iris serve --port 8080
 
 Configuration lives in .env (see .env.example). Docs: https://github.com/YourAKShaw/iris`;
@@ -58,6 +60,17 @@ function printError(error: unknown): void {
   }
   process.stderr.write(`✗ ${safeText(failure.message)}\n`);
   if (detail) process.stderr.write(`  detail: ${safeText(detail)}\n`);
+}
+
+/** Reads a profile file given on the command line into the same shape the web app uploads. */
+async function readProfileArg(path: string | undefined, label: string): Promise<{ name: string; data: string } | undefined> {
+  if (!path) return undefined;
+  const resolved = path.replace(/^~(?=\/|$)/, process.env.HOME ?? '~');
+  try {
+    return { name: basename(resolved), data: (await readFile(resolved)).toString('base64') };
+  } catch {
+    throw new IrisError('INVALID_INPUT', `Could not read the ${label} at ${path}.`);
+  }
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -119,7 +132,8 @@ async function main(argv: string[]): Promise<number> {
 
   let input;
   try {
-    input = parseRunInput({ url: command, recipient: values.to, offer: values.offer, linkedin: values.linkedin, x: values.x });
+    const [linkedin, x] = await Promise.all([readProfileArg(values.linkedin, 'LinkedIn PDF'), readProfileArg(values.x, 'X Markdown file')]);
+    input = parseRunInput({ url: command, recipient: values.to, offer: values.offer, linkedin, x });
   } catch (error) {
     printError(error);
     return EXIT.usage;
@@ -133,7 +147,7 @@ async function main(argv: string[]): Promise<number> {
   if (fancy) {
     process.stderr.write(
       renderRunHeader(
-        { target: input.url, recipient: input.recipient ?? undefined, linkedin: input.linkedin, x: input.x, provider: config.llm.provider, model: config.llm.model, version: VERSION },
+        { target: input.url, recipient: input.recipient ?? undefined, linkedin: values.linkedin, x: values.x, provider: config.llm.provider, model: config.llm.model, version: VERSION },
         errDepth,
       ),
     );

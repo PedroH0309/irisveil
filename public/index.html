@@ -82,12 +82,14 @@
 
           <div class="field-pair even">
             <div class="field">
-              <label for="linkedin">Their LinkedIn <span class="optional">(optional)</span></label>
-              <input id="linkedin" name="linkedin" type="text" inputmode="url" placeholder="https://www.linkedin.com/in/cristinajcordova" maxlength="2048" autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <label for="linkedin">Their LinkedIn PDF <span class="optional">(optional)</span></label>
+              <input id="linkedin" name="linkedin" type="file" accept="application/pdf,.pdf" aria-describedby="linkedin-help" />
+              <p id="linkedin-help" class="field-help">On their profile: More → Save to PDF.</p>
             </div>
             <div class="field">
-              <label for="x">Their X <span class="optional">(optional)</span></label>
-              <input id="x" name="x" type="text" placeholder="@cjc or x.com/cjc" maxlength="2048" autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <label for="x">Their X profile (.md) <span class="optional">(optional)</span></label>
+              <input id="x" name="x" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" aria-describedby="x-help" />
+              <p id="x-help" class="field-help">Exported from Grok; <a href="https://github.com/YourAKShaw/iris#personalise-with-linkedin-and-x" target="_blank" rel="noopener">see the prompt</a>.</p>
             </div>
           </div>
 

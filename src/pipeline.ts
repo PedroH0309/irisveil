@@ -6,7 +6,7 @@ import { researchCompany, type CompanyProfile, type DroppedClaim, type Hypothesi
 import { draftOutreach, parseRecipient, type OutreachEmail } from './outreach.js';
 import type { LlmClient } from './llm.js';
 import type { Resolver } from './net-guard.js';
-import { fetchProfile, normalizeProfileUrl, NETWORK_LABEL, type ProfilePage } from './profiles.js';
+import { NETWORK_LABEL, PROFILE_FILE, PROFILE_FILE_MAX_BYTES, readProfileFile, type ProfileFile, type ProfilePage } from './profiles.js';
 
 export interface RunInput {
   url: string;
@@ -14,9 +14,10 @@ export interface RunInput {
   offer: string | undefined;
   senderName?: string | undefined;
   senderCompany?: string | undefined;
-  /** Recipient's public profiles, already normalised. */
-  linkedin?: string | undefined;
-  x?: string | undefined;
+  /** The recipient's LinkedIn "Save to PDF" resume. */
+  linkedin?: ProfileFile | undefined;
+  /** A Markdown export of the recipient's X profile, made with Grok. */
+  x?: ProfileFile | undefined;
 }
 
 export type Stage = 'fetch' | 'research' | 'verify' | 'draft' | 'done';
@@ -66,6 +67,18 @@ const oneLine = (max: number, message: string) =>
     .optional()
     .transform((value) => value || undefined);
 
+/** An uploaded profile file: its name and base64 bytes. Decoded and size-checked here. */
+const profileFile = (network: 'linkedin' | 'x') =>
+  z
+    .object({
+      name: z.string().max(255).default(''),
+      data: z.string().max(Math.ceil(PROFILE_FILE_MAX_BYTES / 3) * 4 + 4, `The ${PROFILE_FILE[network]} must be 2 MB or smaller.`),
+    })
+    .optional()
+    .transform((file): ProfileFile | undefined =>
+      file && file.data ? { name: file.name, bytes: new Uint8Array(Buffer.from(file.data, 'base64')) } : undefined,
+    );
+
 const RunInputSchema = z.object({
   url: z
     .string({ error: 'Enter a company website.' })
@@ -86,8 +99,8 @@ const RunInputSchema = z.object({
     .transform((value) => value || undefined),
   senderName: oneLine(LIMITS.senderNameChars, `Your name must be ${LIMITS.senderNameChars} characters or fewer.`),
   senderCompany: oneLine(LIMITS.senderCompanyChars, `Your company must be ${LIMITS.senderCompanyChars} characters or fewer.`),
-  linkedin: oneLine(LIMITS.urlChars, 'That LinkedIn URL is too long.'),
-  x: oneLine(LIMITS.urlChars, 'That X URL is too long.'),
+  linkedin: profileFile('linkedin'),
+  x: profileFile('x'),
 });
 
 /** Validates untrusted input (CLI args or HTTP body) and normalises the URL. */
@@ -108,9 +121,7 @@ export function parseRunInput(raw: unknown): RunInput {
     throw new IrisError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
   }
   normalized.hash = '';
-  const { recipient, offer, senderName, senderCompany } = parsed.data;
-  const linkedin = parsed.data.linkedin ? normalizeProfileUrl('linkedin', parsed.data.linkedin) : undefined;
-  const x = parsed.data.x ? normalizeProfileUrl('x', parsed.data.x) : undefined;
+  const { recipient, offer, senderName, senderCompany, linkedin, x } = parsed.data;
   return { url: normalized.toString(), recipient, offer, senderName, senderCompany, linkedin, x };
 }
 
@@ -132,26 +143,14 @@ export async function runIris(input: RunInput, deps: RunDeps): Promise<IrisResul
     emit('fetch', `Reading ${host}`);
     const fetchOptions = { ...config.fetch, signal, resolver: deps.resolver };
     const wanted = (['linkedin', 'x'] as const).filter((network) => input[network]);
-    if (wanted.length) emit('fetch', `Reading the recipient's ${wanted.map((n) => NETWORK_LABEL[n]).join(' and ')} profile${wanted.length > 1 ? 's' : ''}`);
-    const [crawl, ...profileResults] = await Promise.all([
+    if (wanted.length) emit('fetch', `Reading the recipient's ${wanted.map((n) => PROFILE_FILE[n]).join(' and ')}`);
+    // A bad profile file fails the run with a clear message rather than silently dropping it.
+    const [crawl, ...profiles] = await Promise.all([
       crawlSite(input.url, fetchOptions),
-      ...wanted.map((network) =>
-        fetchProfile(network, input[network]!, fetchOptions).then(
-          (page) => ({ ok: true as const, page }),
-          (error: unknown) => ({ ok: false as const, network, error }),
-        ),
-      ),
+      ...wanted.map((network): Promise<ProfilePage> => readProfileFile(network, input[network]!)),
     ]);
     signal.throwIfAborted();
-    const profiles: ProfilePage[] = [];
     const profileWarnings: string[] = [];
-    for (const result of profileResults) {
-      if (result.ok) profiles.push(result.page);
-      else
-        profileWarnings.push(
-          `Could not read the ${NETWORK_LABEL[result.network]} profile (it may require sign-in), so the drafts use company research only for it.`,
-        );
-    }
     emit(
       'fetch',
       `Read ${crawl.pages.length} page${crawl.pages.length === 1 ? '' : 's'} (${crawl.totalChars.toLocaleString('en-US')} characters)` +
@@ -173,13 +172,18 @@ export async function runIris(input: RunInput, deps: RunDeps): Promise<IrisResul
     const durationMs = Date.now() - startedAt;
     emit('done', `Done in ${(durationMs / 1000).toFixed(1)}s`);
 
+    for (const page of profiles) {
+      if (!brief.signals.some((s) => s.category === 'person' && s.sourceUrl === page.url)) {
+        profileWarnings.push(`No usable professional details were found in the ${PROFILE_FILE[page.network]}, so the drafts do not reference it.`);
+      }
+    }
     const warnings = [...profileWarnings, ...outreach.warnings];
     if (crawl.skipped.length) warnings.push(`${crawl.skipped.length} supporting page(s) could not be read.`);
 
     return {
       schemaVersion: 1,
       generatedAt: new Date().toISOString(),
-      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderCompany: sender.company, linkedin: input.linkedin ?? null, x: input.x ?? null },
+      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderCompany: sender.company, linkedin: input.linkedin?.name ?? null, x: input.x?.name ?? null },
       company: brief.company,
       signals: brief.signals,
       hypotheses: brief.hypotheses,

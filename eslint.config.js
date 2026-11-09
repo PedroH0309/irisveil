@@ -22,6 +22,7 @@ export default tseslint.config(
         window: 'readonly',
         document: 'readonly',
         fetch: 'readonly',
+        FileReader: 'readonly',
         navigator: 'readonly',
         TextDecoder: 'readonly',
         URL: 'readonly',

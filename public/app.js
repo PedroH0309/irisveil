@@ -318,6 +318,21 @@
     submitButton.textContent = value ? 'Researching…' : 'Research';
   }
 
+  const MAX_PROFILE_BYTES = 2 * 1024 * 1024;
+
+  /** Reads a chosen profile file as { name, data } with base64 data, or null when none is chosen. */
+  function readProfileFile(input, label) {
+    const file = input.files && input.files[0];
+    if (!file) return Promise.resolve(null);
+    if (file.size > MAX_PROFILE_BYTES) return Promise.reject(new Error(`The ${label} must be 2 MB or smaller.`));
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ name: file.name, data: String(reader.result).replace(/^data:[^,]*,/, '') });
+      reader.onerror = () => reject(new Error(`Could not read the ${label}.`));
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function run() {
     if (running) return;
     const url = urlInput.value.trim();
@@ -325,6 +340,15 @@
     if (!url) {
       showError({ message: 'Enter a company website, for example linear.app.' });
       urlInput.focus();
+      return;
+    }
+
+    let linkedin;
+    let x;
+    try {
+      [linkedin, x] = await Promise.all([readProfileFile(linkedinInput, 'LinkedIn PDF'), readProfileFile(xInput, 'X Markdown file')]);
+    } catch (error) {
+      showError({ message: error.message });
       return;
     }
 
@@ -343,8 +367,8 @@
           offer: offerInput.value.trim(),
           senderName: senderNameInput.value.trim(),
           senderCompany: senderCompanyInput.value.trim(),
-          linkedin: linkedinInput.value.trim(),
-          x: xInput.value.trim(),
+          linkedin: linkedin || undefined,
+          x: x || undefined,
         }),
       });
 

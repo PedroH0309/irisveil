@@ -93,7 +93,8 @@ const STATIC_FILES: Record<string, { file: string; type: string; cache: string }
   '/fonts/hanken-grotesk.woff2': { file: 'fonts/hanken-grotesk.woff2', type: 'font/woff2', cache: 'public, max-age=604800' },
 };
 
-const MAX_BODY_BYTES = 8 * 1024;
+/** Room for two 2 MB profile files as base64 plus the text fields. */
+const MAX_BODY_BYTES = 6 * 1024 * 1024;
 const DEFAULT_PUBLIC_DIR = new URL('../public/', import.meta.url);
 
 type RunEvent =
@@ -219,7 +220,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
     const senderName = input.senderName ?? config.sender.name;
     const senderCompany = input.senderCompany ?? config.sender.company;
     const cacheKey = createHash('sha256')
-      .update(JSON.stringify([input.url, input.recipient ?? '', offer, senderName, senderCompany, input.linkedin ?? '', input.x ?? '', llm.model]))
+      .update(JSON.stringify([input.url, input.recipient ?? '', offer, senderName, senderCompany, fileHash(input.linkedin?.bytes), fileHash(input.x?.bytes), llm.model]))
       .digest('hex');
     const host = new URL(input.url).hostname;
     const cached = cache.get(cacheKey);
@@ -393,6 +394,8 @@ export function clientIp(req: http.IncomingMessage, trustProxyHops: number): str
   const candidate = chain[chain.length - trustProxyHops];
   return candidate && isIP(candidate) ? candidate : socketIp;
 }
+
+const fileHash = (bytes: Uint8Array | undefined) => (bytes ? createHash('sha256').update(bytes).digest('hex') : '');
 
 function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
