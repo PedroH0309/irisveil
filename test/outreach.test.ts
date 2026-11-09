@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEmail, checkMix, factMix, formatEmailBody, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
+import { checkEmail, checkMix, factMix, formatEmailBody, personFactsUsed, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
 
 const ids = new Set(['s1', 's2']);
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
@@ -101,27 +101,28 @@ describe('formatEmailBody', () => {
 });
 
 describe('company and person facts in every draft', () => {
-  const sig = (id: string, category: string, sourceUrl: string) => ({ id, category, claim: '', quote: '', sourceUrl }) as never;
-  const company = sig('s1', 'product', 'https://acme.example/');
-  const linkedin = sig('s2', 'person', 'https://www.linkedin.com/in/cristinajcordova');
-  const x = sig('s3', 'person', 'https://x.com/cjc');
+  const sig = (id: string, category: string, sourceUrl: string, claim = '') => ({ id, category, claim, quote: '', sourceUrl }) as never;
+  const company = sig('s1', 'product', 'https://linear.app/');
+  const linkedin = sig('s2', 'person', 'https://www.linkedin.com/in/cristinajcordova', 'Cristina previously built the partner ecosystem at Notion and Stripe.');
+  const x = sig('s3', 'person', 'https://x.com/cjc', 'Cristina posts about operating cadence at Linear.');
+  const draft = (basedOn: string[], body: string) => ({ subject: 'Subject', body, basedOn });
 
   it('company only: each draft needs a company fact', () => {
     const mix = factMix({ signals: [company] });
-    assert.deepEqual(checkMix(['s1'], mix, 'e'), []);
-    assert.match(checkMix([], mix, 'e').join(' '), /company fact/);
+    assert.deepEqual(checkMix(draft(['s1'], 'Plain company email.'), mix, 'e'), []);
+    assert.match(checkMix(draft([], 'x'), mix, 'e').join(' '), /company fact/);
   });
 
-  it('company plus one profile: each draft needs both kinds', () => {
-    const mix = factMix({ signals: [company, linkedin] });
-    assert.deepEqual(checkMix(['s1', 's2'], mix, 'e'), []);
-    assert.match(checkMix(['s1'], mix, 'e').join(' '), /\[person\] fact/);
-    assert.match(checkMix(['s2'], mix, 'e').join(' '), /company fact/);
+  it('company plus a profile: the body must visibly use the profile, not just cite it', () => {
+    const mix = factMix({ signals: [company, linkedin], company: { name: 'Linear' } }, 'Cristina Cordova');
+    assert.deepEqual(checkMix(draft(['s1', 's2'], 'Having built partner programs at Notion, you know integrations.'), mix, 'e'), []);
+    assert.match(checkMix(draft(['s1', 's2'], 'Linear ships fast. Cristina, worth a call?'), mix, 'e').join(' '), /specific detail.*notion/i);
+    assert.match(checkMix(draft(['s2'], 'Your Stripe years show.'), mix, 'e').join(' '), /company fact/);
   });
 
   it('company plus both profiles: groups person facts by network', () => {
     const mix = factMix({ signals: [company, linkedin, x] });
     assert.deepEqual([...mix.profiles.keys()].sort(), ['LinkedIn', 'X']);
-    assert.deepEqual(checkMix(['s1', 's3'], mix, 'e'), []);
+    assert.deepEqual(personFactsUsed(draft(['s1', 's2', 's3'], 'Your posts on operating cadence resonated.'), mix), ['s3']);
   });
 });

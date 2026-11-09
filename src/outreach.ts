@@ -159,11 +159,29 @@ export interface FactMix {
   company: ReadonlySet<string>;
   /** Profile label ("LinkedIn", "X") → ids of person facts quoted from that profile. */
   profiles: ReadonlyMap<string, ReadonlySet<string>>;
+  /** Person fact id → distinctive words a draft must contain to really use that fact. */
+  anchors: ReadonlyMap<string, readonly string[]>;
 }
 
-export function factMix(brief: Pick<ResearchBrief, 'signals'>): FactMix {
+const GENERIC = new Set(
+  ('about after also and before built building company current currently from have helped into leads leading ' +
+    'previously role team that their them they this with works working years over more than were where which while ' +
+    'chief officer head director manager senior vice president lead').split(' '),
+);
+
+const words = (text: string) => text.toLowerCase().normalize('NFKC').match(/[\p{L}\p{N}][\p{L}\p{N}'’‑-]*/gu) ?? [];
+
+/** Specific words in a person fact (past employers, focus areas, numbers) that prove a draft used it. */
+function anchorsFor(claim: string, ignore: ReadonlySet<string>): string[] {
+  return [...new Set(words(claim))].filter((w) => (w.length >= 4 || /\d/.test(w)) && !GENERIC.has(w) && !ignore.has(w));
+}
+
+export function factMix(brief: Pick<ResearchBrief, 'signals'> & { company?: { name: string } }, recipientName = ''): FactMix {
   const company = new Set<string>();
   const profiles = new Map<string, Set<string>>();
+  const anchors = new Map<string, string[]>();
+  // The recipient's name and the company name are in every draft, so they prove nothing.
+  const ignore = new Set([...words(recipientName), ...words(brief.company?.name ?? '')]);
   for (const s of brief.signals) {
     if (s.category !== 'person') {
       company.add(s.id);
@@ -173,28 +191,40 @@ export function factMix(brief: Pick<ResearchBrief, 'signals'>): FactMix {
     const label = /linkedin\.com$/.test(host) ? 'LinkedIn' : /(^|\.)(x|twitter)\.com$/.test(host) ? 'X' : 'profile';
     if (!profiles.has(label)) profiles.set(label, new Set());
     profiles.get(label)!.add(s.id);
+    anchors.set(s.id, anchorsFor(s.claim, ignore));
   }
-  return { company, profiles };
+  return { company, profiles, anchors };
+}
+
+/** Person facts a draft really uses: cited in basedOn AND visibly present in the text. */
+export function personFactsUsed(email: { subject: string; body: string; basedOn: readonly string[] }, mix: FactMix): string[] {
+  const text = new Set(words(`${email.subject} ${email.body}`));
+  return email.basedOn.filter((id) => {
+    const anchors = mix.anchors.get(id);
+    return anchors !== undefined && (anchors.length === 0 || anchors.some((w) => text.has(w)));
+  });
 }
 
 /** Every draft blends company facts with person facts when the recipient's profiles were read. */
-export function checkMix(basedOn: readonly string[], mix: FactMix, label: string): string[] {
+export function checkMix(email: { subject: string; body: string; basedOn: readonly string[] }, mix: FactMix, label: string): string[] {
   const problems: string[] = [];
-  if (mix.company.size && !basedOn.some((id) => mix.company.has(id))) {
+  if (mix.company.size && !email.basedOn.some((id) => mix.company.has(id))) {
     problems.push(`${label} must use at least one company fact (${[...mix.company].join(', ')}) and list it in basedOn.`);
   }
-  const person = [...mix.profiles.values()].flatMap((ids) => [...ids]);
-  if (person.length && !basedOn.some((id) => person.includes(id))) {
-    problems.push(`${label} must also use at least one [person] fact (${person.join(', ')}) and list it in basedOn.`);
+  if (mix.anchors.size && personFactsUsed(email, mix).length === 0) {
+    const options = [...mix.anchors.keys()].map((id) => `${id} (mention e.g. "${(mix.anchors.get(id) ?? []).slice(0, 3).join('", "')}")`);
+    problems.push(
+      `${label} must explicitly mention a specific detail from the recipient's profile in the body, not just list it in basedOn. Use one of: ${options.join('; ')}.`,
+    );
   }
   return problems;
 }
 
 function checkAll(emails: EmailDraft[], validIds: ReadonlySet<string>, mix: FactMix): string[] {
-  const problems = emails.flatMap((email, index) => [...checkEmail(email, validIds, index), ...checkMix(email.basedOn, mix, `emails[${index}]`)]);
-  const used = new Set(emails.flatMap((email) => email.basedOn));
+  const problems = emails.flatMap((email, index) => [...checkEmail(email, validIds, index), ...checkMix(email, mix, `emails[${index}]`)]);
+  const used = new Set(emails.flatMap((email) => personFactsUsed(email, mix)));
   for (const [network, ids] of mix.profiles) {
-    if (![...ids].some((id) => used.has(id))) problems.push(`Use at least one ${network} fact (${[...ids].join(', ')}) across the drafts.`);
+    if (![...ids].some((id) => used.has(id))) problems.push(`Use at least one ${network} fact (${[...ids].join(', ')}) in the text of the drafts.`);
   }
   const subjects = emails.map((email) => email.subject.toLowerCase());
   if (new Set(subjects).size !== subjects.length) problems.push('Each email needs a different subject line.');
@@ -219,7 +249,7 @@ Hard rules:
 - Each email lists in "basedOn" the fact ids it relies on (at least one). Never write fact ids (s1, S2, [s3]) in the subject or body: the recipient must not see them.
 - Hypotheses are guesses: phrase them as a question or "I'd guess", never as fact.
 - Every email is built on the company: each one uses at least one company fact (any tag except [person]).
-- Facts tagged [person] come from the recipient's public LinkedIn or X profile. When any exist, EVERY email also weaves in at least one of them, so each draft is personal and company-specific at once: for example, connect their background or a post on a work topic to the company fact. Across the three drafts use every [person] fact at least once, and draw on each profile that has facts. Keep it brief and professional; never sound like you studied their profile closely.
+- Facts tagged [person] come from the recipient's public LinkedIn or X profile. When any exist, EVERY email must say a specific detail from one of them in its body, by name (a past employer, what they lead, a topic they posted about), and connect it to a company fact. Listing a [person] id in basedOn without saying that detail in the text is a failure. Across the three drafts use every [person] fact at least once, and draw on each profile that has facts. One natural sentence is enough; keep it professional.
 - Spread the company facts across the drafts too, so together the three emails use as much of the research as fits.
 - Body: 60 to 130 words. Subject: under 60 characters, specific, no clickbait, no emojis, no ALL CAPS.
 - Plain text only: no links or URLs, no placeholders like [Name], no markdown.
@@ -256,7 +286,7 @@ export async function draftOutreach(
   signal?: AbortSignal,
 ): Promise<{ emails: OutreachEmail[]; warnings: string[]; usage: LlmUsage }> {
   const validIds = new Set(brief.signals.map((s) => s.id));
-  const mix = factMix(brief);
+  const mix = factMix(brief, recipient.name);
   let impersonal = 0;
   const result = await completeStructured(llm, buildOutreachMessages(brief, sender, recipient), EmailDraftSchema, {
     maxTokens: 2_000,
@@ -271,7 +301,7 @@ export async function draftOutreach(
   result.value.emails.forEach((raw, index) => {
     const email = { ...raw, subject: stripFactIds(raw.subject, validIds), body: formatEmailBody(stripFactIds(raw.body, validIds), sender) };
     const subjectKey = email.subject.toLowerCase();
-    const mixProblems = checkMix(email.basedOn.filter((id) => validIds.has(id)), mix, 'draft');
+    const mixProblems = checkMix({ ...email, basedOn: email.basedOn.filter((id) => validIds.has(id)) }, mix, 'draft');
     // A draft with no company fact is not grounded in the company, so it goes; one missing only
     // the personal touch is kept but reported.
     const noCompany = mixProblems.some((p) => p.includes('company fact'));
@@ -285,7 +315,8 @@ export async function draftOutreach(
       angle: email.angle || `Angle ${emails.length + 1}`,
       subject: email.subject,
       body: email.body,
-      basedOn: [...new Set(email.basedOn.filter((id) => validIds.has(id)))],
+      // A profile fact counts only if the text visibly uses it, so the "uses" label stays honest.
+      basedOn: [...new Set(email.basedOn.filter((id) => validIds.has(id) && (!mix.anchors.has(id) || personFactsUsed(email, mix).includes(id))))],
       wordCount: wordCount(email.body),
     });
   });
