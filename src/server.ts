@@ -24,6 +24,8 @@ export interface Logger {
   info(message: string, fields?: Record<string, unknown>): void;
   warn(message: string, fields?: Record<string, unknown>): void;
   error(message: string, fields?: Record<string, unknown>): void;
+  /** Optional live view of a run in flight; the run's final 'run' log line ends it. */
+  progress?(requestId: string, host: string, event: ProgressEvent): void;
 }
 
 export function createJsonLogger(write: (line: string) => void = (line) => process.stdout.write(line)): Logger {
@@ -260,7 +262,10 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
         llm,
         signal: controller.signal,
         resolver: options.resolver,
-        onProgress: (event) => writeEvent(res, { type: 'progress', ...event }),
+        onProgress: (event) => {
+          writeEvent(res, { type: 'progress', ...event });
+          logger.progress?.(requestId, host, event);
+        },
       });
       cache.set(cacheKey, result);
       writeEvent(res, { type: 'result', cached: false, result, markdown: renderMarkdown(result) });

@@ -10,6 +10,7 @@ import { createIrisServer, createJsonLogger } from './server.js';
 import { createPrettyLogger, renderBanner, wantsPrettyLogs } from './terminal-log.js';
 import { colorDepth } from './theme.js';
 import { renderFailure, renderNote, renderProgress, renderRunHeader } from './cli-output.js';
+import { createSpinner } from './spinner.js';
 import { VERSION } from './version.js';
 
 const HELP = `Iris ${VERSION}: cited lead research and outreach drafts from a company website.
@@ -132,6 +133,9 @@ async function main(argv: string[]): Promise<number> {
     );
   }
 
+  // Animate only on a real terminal; FORCE_COLOR into a pipe gets the static lines.
+  const spinner = fancy && process.stderr.isTTY && errDepth !== 'none' ? createSpinner({ stream: process.stderr, depth: errDepth }) : undefined;
+
   try {
     const result = await runIris(input, {
       config,
@@ -139,8 +143,15 @@ async function main(argv: string[]): Promise<number> {
       signal: controller.signal,
       onProgress: values.quiet
         ? undefined
-        : (event) => process.stderr.write(fancy ? renderProgress(event, errDepth) : `› ${safeText(event.message)}\n`),
+        : (event) => {
+            if (!fancy) return process.stderr.write(`› ${safeText(event.message)}\n`);
+            if (!spinner) return process.stderr.write(renderProgress(event, errDepth));
+            spinner.print(renderProgress(event, errDepth));
+            if (event.stage === 'done') spinner.stop();
+            else spinner.set(event.message);
+          },
     });
+    spinner?.stop();
 
     if (values.json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     else process.stdout.write(renderTerminal(result, { depth: colorDepth(process.stdout), width: process.stdout.columns }));
@@ -152,6 +163,7 @@ async function main(argv: string[]): Promise<number> {
     }
     return EXIT.ok;
   } catch (error) {
+    spinner?.stop();
     printError(error);
     return isIrisError(error) && error.code === 'ABORTED' ? 130 : EXIT.failure;
   }
@@ -165,7 +177,7 @@ async function serve(config: IrisConfig, portFlag: string | undefined, hostFlag:
   }
   const pretty = wantsPrettyLogs(process.stdout);
   const depth = colorDepth(process.stdout);
-  const logger = pretty ? createPrettyLogger({ depth }) : createJsonLogger();
+  const logger = pretty ? createPrettyLogger({ depth, animate: process.stdout.isTTY ? process.stdout : undefined }) : createJsonLogger();
   const app = await createIrisServer({ config, llm: createLlmClient(config.llm), logger });
   const address = await app.listen(port, hostFlag ?? config.server.host);
   const listening = {

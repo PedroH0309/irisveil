@@ -1,5 +1,7 @@
 import { safeText } from './format.js';
 import type { Logger } from './server.js';
+import type { ProgressEvent } from './pipeline.js';
+import { createSpinner } from './spinner.js';
 import { BRAND, clock, infoRow, renderMasthead, style, type ColorDepth, type Rgb } from './theme.js';
 
 /**
@@ -50,13 +52,24 @@ const text = (value: unknown) => safeText(String(value ?? ''));
 export interface PrettyLoggerOptions {
   depth: ColorDepth;
   write?: (line: string) => void;
+  /** Animate a loader on this TTY while runs are in flight. */
+  animate?: NodeJS.WriteStream;
   now?: () => Date;
 }
 
 /** One italic line per event; the request id tail ties a run to its HTTP request. */
 export function createPrettyLogger(options: PrettyLoggerOptions): Logger {
   const s = style(options.depth);
-  const write = options.write ?? ((line: string) => process.stdout.write(line));
+  const spinner = options.animate && options.depth !== 'none' ? createSpinner({ stream: options.animate, depth: options.depth }) : undefined;
+  const plainWrite = options.write ?? ((line: string) => process.stdout.write(line));
+  const write = (line: string) => (spinner ? spinner.print(line) : plainWrite(line));
+  const active = new Map<string, string>();
+  const refresh = () => {
+    if (!spinner) return;
+    const labels = [...active.values()];
+    if (labels.length === 0) spinner.stop();
+    else spinner.set(labels.length === 1 ? labels[0]! : `${labels.length} runs · ${labels.at(-1)}`);
+  };
   const now = options.now ?? (() => new Date());
 
   const levelMark: Record<string, string> = {
@@ -111,6 +124,17 @@ export function createPrettyLogger(options: PrettyLoggerOptions): Logger {
     if (message === 'listening') return; // the banner already says it
     const body = message === 'request' ? request(fields) : message === 'run' ? run(fields) : generic(message, fields);
     write(`  ${s.dim(clock(now()))}  ${levelMark[level] ?? '•'}  ${s.italic(body)}${id(fields)}\n`);
+    if (message === 'run' && typeof fields.requestId === 'string' && active.delete(fields.requestId)) refresh();
   };
-  return { info: log('info'), warn: log('warn'), error: log('error') };
+  return {
+    info: log('info'),
+    warn: log('warn'),
+    error: log('error'),
+    progress(requestId: string, host: string, event: ProgressEvent) {
+      if (!spinner) return;
+      if (event.stage === 'done') active.delete(requestId);
+      else active.set(requestId, `${safeText(host)} · ${event.message}`);
+      refresh();
+    },
+  };
 }
