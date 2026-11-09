@@ -324,24 +324,6 @@ button:disabled {
   margin-top: 22px;
 }
 
-.examples {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 0.9375rem;
-}
-.example {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--iris);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  text-decoration-thickness: 1px;
-}
-.example:hover {
-  color: var(--iris-strong);
-}
-
 /* ---------- Progress log ---------- */
 
 .log {

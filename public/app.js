@@ -316,7 +316,6 @@
     running = value;
     submitButton.disabled = value;
     submitButton.textContent = value ? 'Researching…' : 'Research';
-    for (const button of document.querySelectorAll('.example')) button.disabled = value;
   }
 
   async function run() {
@@ -324,7 +323,7 @@
     const url = urlInput.value.trim();
     errorBox.hidden = true;
     if (!url) {
-      showError({ message: 'Enter a company website, for example acme.com.' });
+      showError({ message: 'Enter a company website, for example linear.app.' });
       urlInput.focus();
       return;
     }
@@ -386,13 +385,6 @@
     event.preventDefault();
     run();
   });
-
-  for (const button of document.querySelectorAll('.example')) {
-    button.addEventListener('click', () => {
-      urlInput.value = button.dataset.url || '';
-      run();
-    });
-  }
 
   // Prefill the sender and offer, and show today's remaining demo runs.
   fetch('/api/meta')
