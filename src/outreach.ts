@@ -99,16 +99,44 @@ export function stripFactIds(text: string, validIds: ReadonlySet<string>): strin
     .trim();
 }
 
+type SignatureSender = Pick<SenderProfile, 'name' | 'company'> & Partial<Pick<SenderProfile, 'role' | 'address' | 'mobile' | 'email' | 'website'>>;
+
+/**
+ * The sign-off block, skipping anything left empty:
+ *   Name | Role
+ *   Company
+ *   Office address
+ *   Mobile: <mobile>
+ *   email | website
+ */
+export function formatSignature(sender: SignatureSender): string {
+  const join = (...parts: Array<string | undefined>) => parts.filter(Boolean).join(' | ');
+  return [
+    join(sender.name, sender.role),
+    sender.company,
+    sender.address,
+    sender.mobile ? `Mobile: ${sender.mobile}` : '',
+    join(sender.email, sender.website),
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 const CLOSING = /^(best|best regards|kind regards|regards|warm regards|thanks|thank you|many thanks|cheers|sincerely|all the best)[,!.]?$/i;
 
 /**
  * Normalises a draft into a send-ready shape: greeting on its own line, short paragraphs
  * separated by one blank line with no hard wraps inside them, and a single sign-off block.
  */
-export function formatEmailBody(body: string, sender: { name: string; company: string }): string {
+export function formatEmailBody(body: string, sender: SignatureSender): string {
   const lines = body.replace(/\r\n?/g, '\n').split('\n').map((line) => line.trim());
   // Drop any sign-off the model wrote; one consistent block is added below.
-  const signature = new Set([sender.name.toLowerCase(), sender.company.toLowerCase()]);
+  const block = formatSignature(sender);
+  const signature = new Set(
+    [...block.split('\n'), sender.name, sender.company, sender.role, sender.address, sender.email, sender.website]
+      .filter((part): part is string => Boolean(part))
+      .map((part) => part.toLowerCase()),
+  );
   while (lines.length && (lines.at(-1) === '' || signature.has(lines.at(-1)!.toLowerCase()) || CLOSING.test(lines.at(-1)!))) lines.pop();
 
   const paragraphs: string[] = [];
@@ -125,7 +153,7 @@ export function formatEmailBody(body: string, sender: { name: string; company: s
   const greeting = /^((?:hi|hello|hey|dear)\b[^,\n]{0,60},)\s+(\S[\s\S]*)$/i.exec(paragraphs[0] ?? '');
   if (greeting) paragraphs.splice(0, 1, greeting[1]!, greeting[2]!);
 
-  return [...paragraphs.map((p) => p.replace(/\s{2,}/g, ' ')), `Best,\n${sender.name}\n${sender.company}`].join('\n\n');
+  return [...paragraphs.map((p) => p.replace(/\s{2,}/g, ' ')), `Best,\n${block}`].join('\n\n');
 }
 
 export function checkEmail(email: EmailDraft, validIds: ReadonlySet<string>, index: number): string[] {

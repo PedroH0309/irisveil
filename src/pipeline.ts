@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { IrisVeilError, toIrisVeilError } from './errors.js';
-import { LIMITS, type IrisVeilConfig } from './config.js';
+import { LIMITS, type IrisVeilConfig, type SenderProfile } from './config.js';
 import { crawlSite } from './site.js';
 import { researchCompany, type CompanyProfile, type DroppedClaim, type Hypothesis, type Signal } from './research.js';
 import { draftOutreach, parseRecipient, type OutreachEmail } from './outreach.js';
@@ -13,7 +13,12 @@ export interface RunInput {
   recipient: string | undefined;
   offer: string | undefined;
   senderName?: string | undefined;
+  senderRole?: string | undefined;
   senderCompany?: string | undefined;
+  senderAddress?: string | undefined;
+  senderMobile?: string | undefined;
+  senderEmail?: string | undefined;
+  senderWebsite?: string | undefined;
   /** The recipient's LinkedIn "Save to PDF" resume. */
   linkedin?: ProfileFile | undefined;
   /** A Markdown export of the recipient's X profile, made with Grok. */
@@ -30,7 +35,7 @@ export interface ProgressEvent {
 export interface IrisVeilResult {
   schemaVersion: 1;
   generatedAt: string;
-  input: { url: string; recipient: string | null; offer: string; senderName: string; senderCompany: string; linkedin: string | null; x: string | null };
+  input: { url: string; recipient: string | null; offer: string; senderName: string; senderRole: string; senderCompany: string; senderAddress: string; senderMobile: string; senderEmail: string; senderWebsite: string; linkedin: string | null; x: string | null };
   company: CompanyProfile;
   signals: Signal[];
   hypotheses: Hypothesis[];
@@ -98,7 +103,12 @@ const RunInputSchema = z.object({
     .optional()
     .transform((value) => value || undefined),
   senderName: oneLine(LIMITS.senderNameChars, `Your name must be ${LIMITS.senderNameChars} characters or fewer.`),
+  senderRole: oneLine(LIMITS.senderRoleChars, `Your role must be ${LIMITS.senderRoleChars} characters or fewer.`),
   senderCompany: oneLine(LIMITS.senderCompanyChars, `Your company must be ${LIMITS.senderCompanyChars} characters or fewer.`),
+  senderAddress: oneLine(LIMITS.senderAddressChars, `Your office address must be ${LIMITS.senderAddressChars} characters or fewer.`),
+  senderMobile: oneLine(LIMITS.senderMobileChars, `Your mobile number must be ${LIMITS.senderMobileChars} characters or fewer.`),
+  senderEmail: oneLine(LIMITS.senderEmailChars, `Your email must be ${LIMITS.senderEmailChars} characters or fewer.`),
+  senderWebsite: oneLine(LIMITS.senderWebsiteChars, `Your company website must be ${LIMITS.senderWebsiteChars} characters or fewer.`),
   linkedin: profileFile('linkedin'),
   x: profileFile('x'),
 });
@@ -121,8 +131,22 @@ export function parseRunInput(raw: unknown): RunInput {
     throw new IrisVeilError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
   }
   normalized.hash = '';
-  const { recipient, offer, senderName, senderCompany, linkedin, x } = parsed.data;
-  return { url: normalized.toString(), recipient, offer, senderName, senderCompany, linkedin, x };
+  const { url: _url, ...rest } = parsed.data;
+  return { url: normalized.toString(), ...rest };
+}
+
+/** The sender for one run: per-run input wins, then .env. */
+export function resolveSender(input: RunInput, config: IrisVeilConfig): SenderProfile {
+  return {
+    name: input.senderName ?? config.sender.name,
+    role: input.senderRole ?? config.sender.role,
+    company: input.senderCompany ?? config.sender.company,
+    address: input.senderAddress ?? config.sender.address,
+    mobile: input.senderMobile ?? config.sender.mobile,
+    email: input.senderEmail ?? config.sender.email,
+    website: input.senderWebsite ?? config.sender.website,
+    offer: input.offer ?? config.sender.offer,
+  };
 }
 
 /** Fetch → research → verify → draft. One run makes two LLM calls (plus at most one repair each). */
@@ -132,11 +156,7 @@ export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisV
   const emit = (stage: Stage, message: string) => deps.onProgress?.({ stage, message });
   const deadline = AbortSignal.timeout(config.runTimeoutMs);
   const signal = deps.signal ? AbortSignal.any([deps.signal, deadline]) : deadline;
-  const sender = {
-    name: input.senderName ?? config.sender.name,
-    company: input.senderCompany ?? config.sender.company,
-    offer: input.offer ?? config.sender.offer,
-  };
+  const sender = resolveSender(input, config);
 
   try {
     const host = new URL(input.url).hostname;
@@ -183,7 +203,7 @@ export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisV
     return {
       schemaVersion: 1,
       generatedAt: new Date().toISOString(),
-      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderCompany: sender.company, linkedin: input.linkedin?.name ?? null, x: input.x?.name ?? null },
+      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderRole: sender.role, senderCompany: sender.company, senderAddress: sender.address, senderMobile: sender.mobile, senderEmail: sender.email, senderWebsite: sender.website, linkedin: input.linkedin?.name ?? null, x: input.x?.name ?? null },
       company: brief.company,
       signals: brief.signals,
       hypotheses: brief.hypotheses,

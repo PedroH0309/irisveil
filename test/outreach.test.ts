@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEmail, checkMix, factMix, formatEmailBody, personFactsUsed, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
+import { checkEmail, checkMix, factMix, formatEmailBody, formatSignature, personFactsUsed, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
 
 const ids = new Set(['s1', 's2']);
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
@@ -92,6 +92,14 @@ describe('formatEmailBody', () => {
       formatEmailBody(raw, sender),
       'Hi Priya,\n\nI saw you are hiring field engineers. That is a lot of scheduling.\n\nWorth a call?\n\nBest,\nAyush\nYourAKShaw',
     );
+  });
+
+  it('signs with every sender detail in the set order, skipping empty ones', () => {
+    const full = { name: 'Ayush', role: 'Founder', company: 'YourAKShaw', address: '1 Main St, Pune', mobile: '+91 90000 00000', email: 'a@example.com', website: 'example.com' };
+    const signature = 'Ayush | Founder\nYourAKShaw\n1 Main St, Pune\nMobile: +91 90000 00000\na@example.com | example.com';
+    assert.equal(formatSignature(full), signature);
+    assert.equal(formatEmailBody(`Hi Priya,\n\nHello.\n\nBest,\n${signature}`, full), `Hi Priya,\n\nHello.\n\nBest,\n${signature}`);
+    assert.equal(formatSignature({ name: 'Ayush', company: 'YourAKShaw', website: 'example.com' }), 'Ayush\nYourAKShaw\nexample.com');
   });
 
   it('leaves a well-formed body alone apart from the sign-off', () => {

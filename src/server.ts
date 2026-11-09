@@ -7,7 +7,7 @@ import { IrisVeilError, PRE_LLM_CODES, toIrisVeilError, type IrisVeilErrorCode }
 import type { IrisVeilConfig } from './config.js';
 import type { LlmClient } from './llm.js';
 import type { Resolver } from './net-guard.js';
-import { parseRunInput, runIrisVeil, type IrisVeilResult, type ProgressEvent } from './pipeline.js';
+import { parseRunInput, resolveSender, runIrisVeil, type IrisVeilResult, type ProgressEvent } from './pipeline.js';
 import { DailyBudget, FixedWindowLimiter, TtlCache } from './limits.js';
 import { renderMarkdown } from './format.js';
 import { VERSION } from './version.js';
@@ -217,11 +217,9 @@ export async function createIrisVeilServer(options: IrisVeilServerOptions): Prom
       return;
     }
 
-    const offer = input.offer ?? config.sender.offer;
-    const senderName = input.senderName ?? config.sender.name;
-    const senderCompany = input.senderCompany ?? config.sender.company;
+    const sender = resolveSender(input, config);
     const cacheKey = createHash('sha256')
-      .update(JSON.stringify([input.url, input.recipient ?? '', offer, senderName, senderCompany, fileHash(input.linkedin?.bytes), fileHash(input.x?.bytes), llm.model]))
+      .update(JSON.stringify([input.url, input.recipient ?? '', sender, fileHash(input.linkedin?.bytes), fileHash(input.x?.bytes), llm.model]))
       .digest('hex');
     const host = new URL(input.url).hostname;
     const cached = cache.get(cacheKey);

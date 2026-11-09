@@ -74,7 +74,12 @@ export interface LlmConfig {
 
 export interface SenderProfile {
   name: string;
+  role: string;
   company: string;
+  address: string;
+  mobile: string;
+  email: string;
+  website: string;
   offer: string;
 }
 
@@ -111,7 +116,12 @@ export interface IrisVeilConfig {
 
 export const DEFAULT_SENDER: SenderProfile = {
   name: 'Ayush',
+  role: '',
   company: 'YourAKShaw',
+  address: '',
+  mobile: '',
+  email: '',
+  website: '',
   offer:
     'YourAKShaw designs and ships AI agents and workflow automation for founder-led teams: lead research and outreach, support triage, and internal knowledge assistants.',
 };
@@ -121,7 +131,12 @@ export const LIMITS = {
   recipientChars: 120,
   offerChars: 500,
   senderNameChars: 80,
+  senderRoleChars: 80,
   senderCompanyChars: 80,
+  senderAddressChars: 200,
+  senderMobileChars: 40,
+  senderEmailChars: 120,
+  senderWebsiteChars: 200,
 } as const;
 
 const REASONING_VALUES = new Set(['none', 'minimal', 'low', 'medium', 'high']);
@@ -217,12 +232,25 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
   // --- Sender ----------------------------------------------------------------
   const sender: SenderProfile = {
     name: str('SENDER_NAME') ?? DEFAULT_SENDER.name,
+    role: str('SENDER_ROLE') ?? DEFAULT_SENDER.role,
     company: str('SENDER_COMPANY') ?? DEFAULT_SENDER.company,
+    address: str('SENDER_ADDRESS') ?? DEFAULT_SENDER.address,
+    mobile: str('SENDER_MOBILE') ?? DEFAULT_SENDER.mobile,
+    email: str('SENDER_EMAIL') ?? DEFAULT_SENDER.email,
+    website: str('SENDER_WEBSITE') ?? DEFAULT_SENDER.website,
     offer: str('SENDER_OFFER') ?? DEFAULT_SENDER.offer,
   };
-  if (sender.name.length > LIMITS.senderNameChars) problems.push(`SENDER_NAME must be ${LIMITS.senderNameChars} characters or fewer.`);
-  if (sender.company.length > LIMITS.senderCompanyChars) {
-    problems.push(`SENDER_COMPANY must be ${LIMITS.senderCompanyChars} characters or fewer.`);
+  const senderLimits = [
+    ['SENDER_NAME', sender.name, LIMITS.senderNameChars],
+    ['SENDER_ROLE', sender.role, LIMITS.senderRoleChars],
+    ['SENDER_COMPANY', sender.company, LIMITS.senderCompanyChars],
+    ['SENDER_ADDRESS', sender.address, LIMITS.senderAddressChars],
+    ['SENDER_MOBILE', sender.mobile, LIMITS.senderMobileChars],
+    ['SENDER_EMAIL', sender.email, LIMITS.senderEmailChars],
+    ['SENDER_WEBSITE', sender.website, LIMITS.senderWebsiteChars],
+  ] as const;
+  for (const [key, value, max] of senderLimits) {
+    if (value.length > max) problems.push(`${key} must be ${max} characters or fewer.`);
   }
   if (sender.offer.length > LIMITS.offerChars) {
     problems.push(`SENDER_OFFER must be ${LIMITS.offerChars} characters or fewer.`);
