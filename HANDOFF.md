@@ -7,7 +7,7 @@ Last updated: 2026-11-10
 ## Goal right now
 
 Polish IrisVeil (formerly Iris), a CLI and web app that drafts cold emails from verified website facts, as an open-source project the owner will later also sell as a hosted service.
-Constraints: one atomic Conventional Commit per change, trailer `Co-Authored-By: Claude Code <noreply@anthropic.com>` (checked in CI by `.github/scripts/lint-commit.py`); push only when the user says so; the local `.env` is the user's, so don't edit it.
+Constraints: one atomic Conventional Commit per change, trailer `Co-Authored-By: Claude Code <noreply@anthropic.com>` (checked in CI by `.github/scripts/lint-commit.py`); push only when the user says so; the local `.env` is the user's: edit it only when they ask.
 Licensing: AGPL-3.0-only plus a CLA ([CLA.md](CLA.md)). The domain irisveil.ai must not be mentioned anywhere yet.
 
 ## Where things stand
@@ -15,12 +15,14 @@ Licensing: AGPL-3.0-only plus a CLA ([CLA.md](CLA.md)). The domain irisveil.ai m
 - Branch: `main`, remote `origin` = `git@github.com:YourAKShaw/irisveil.git` (repo renamed from `iris`; the local folder is still `iris`).
 - Done this session: README and SECURITY moved to the root; CI pins actions and checks commits; AGPL relicense; CLA Assistant Lite (`.github/workflows/cla.yml`, signatures branch `cla-signatures` already on GitHub); AGPL source link in the web footer (`IRISVEIL_SOURCE_URL`); full Iris → IrisVeil rebrand; new screenshot; `--claude/--codex/--antigravity/--grok` local-CLI flags ([src/local-agent.ts](src/local-agent.ts)); LinkedIn PDF and X Markdown profile files ([src/profiles.ts](src/profiles.ts)).
 - Wiki is live at github.com/YourAKShaw/irisveil/wiki (separate repo `irisveil.wiki.git`, already pushed).
-- Unpushed: 10 commits (`git log origin/main..HEAD`), including breaking changes (command `irisveil`, `IRISVEIL_*` env vars, AGPL).
-- Checks: `npm run check` → 151 pass, lint clean; `npm run build` OK.
+- Earlier rebrand/AGPL commits are pushed. This session (2026-11-10) added sender signature details: `SENDER_ROLE`, `SENDER_ADDRESS`, `SENDER_MOBILE`, `SENDER_EMAIL`, `SENDER_WEBSITE` ([src/config.ts](src/config.ts)), `formatSignature` in [src/outreach.ts](src/outreach.ts) (`Name | Role` / company / address / `Mobile: …` / `email | website`, empty parts skipped), `resolveSender` in [src/pipeline.ts](src/pipeline.ts), matching web form fields in that order, `.env.example` and README.
+- The user asked for those keys in their `.env` too; they were added blank there (not committed).
+- Unpushed: 4 commits (`git log origin/main..HEAD`).
+- Checks: `npm run check` → 152 pass, lint clean. The new form was not checked in a browser.
 
 ## Next steps
 
-1. Ask the user to push `main`, then confirm CI (`ci.yml` and the commit-lint job) passes on GitHub. The wiki's screenshot updates automatically after the push.
+1. Ask the user to push `main`, then confirm CI (`ci.yml` and the commit-lint job) passes on GitHub. Check the new sender fields in the web form (restart `irisveil serve`, hard-reload); consider a wiki note on the signature variables.
 2. If the user deploys on Render: the Blueprint service name changed to `irisveil` ([render.yaml](render.yaml)); check the existing service still builds.
 3. Make profile research reliable on API providers: give each profile its own small extraction call instead of sharing the company research prompt ([src/research.ts](src/research.ts) `researchCompany`). Also make quote matching tolerate Markdown `**` and PDF line-break hyphens (`normalizeForMatch`). Test with the user's files in `~/Downloads/iris-test/`. It already works well with `--claude`.
 4. Later, on request: a private repo for the paid hosted version (accounts, payment gateway). The open repo stays self-hostable.
