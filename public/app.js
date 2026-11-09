@@ -9,7 +9,12 @@
   const recipientInput = $('recipient');
   const offerInput = $('offer');
   const senderNameInput = $('sender-name');
+  const senderRoleInput = $('sender-role');
   const senderCompanyInput = $('sender-company');
+  const senderAddressInput = $('sender-address');
+  const senderMobileInput = $('sender-mobile');
+  const senderEmailInput = $('sender-email');
+  const senderWebsiteInput = $('sender-website');
   const linkedinInput = $('linkedin');
   const xInput = $('x');
   const submitButton = $('submit');
@@ -376,7 +381,12 @@
           recipient: recipientInput.value.trim(),
           offer: offerInput.value.trim(),
           senderName: senderNameInput.value.trim(),
+          senderRole: senderRoleInput.value.trim(),
           senderCompany: senderCompanyInput.value.trim(),
+          senderAddress: senderAddressInput.value.trim(),
+          senderMobile: senderMobileInput.value.trim(),
+          senderEmail: senderEmailInput.value.trim(),
+          senderWebsite: senderWebsiteInput.value.trim(),
           linkedin: linkedin || undefined,
           x: x || undefined,
         }),
@@ -427,7 +437,12 @@
       if (!meta) return;
       if (meta.sourceUrl) $('source-link').href = meta.sourceUrl;
       if (!senderNameInput.value) senderNameInput.value = meta.sender.name;
+      if (!senderRoleInput.value) senderRoleInput.value = meta.sender.role || '';
       if (!senderCompanyInput.value) senderCompanyInput.value = meta.sender.company;
+      if (!senderAddressInput.value) senderAddressInput.value = meta.sender.address || '';
+      if (!senderMobileInput.value) senderMobileInput.value = meta.sender.mobile || '';
+      if (!senderEmailInput.value) senderEmailInput.value = meta.sender.email || '';
+      if (!senderWebsiteInput.value) senderWebsiteInput.value = meta.sender.website || '';
       if (!offerInput.value) offerInput.value = meta.sender.offer;
       offerInput.placeholder = `What ${meta.sender.company} sells, in a sentence or two`;
       $('quota').textContent = `${meta.limits.dailyRemaining} demo runs left today.`;
