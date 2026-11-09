@@ -89,7 +89,7 @@
             <div class="field">
               <label for="x">Their X profile (.md) <span class="optional">(optional)</span></label>
               <input id="x" name="x" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" aria-describedby="x-help" />
-              <p id="x-help" class="field-help">Exported from Grok; <a href="https://github.com/YourAKShaw/iris#personalise-with-linkedin-and-x" target="_blank" rel="noopener">see the prompt</a>.</p>
+              <p id="x-help" class="field-help">Exported from Grok; <button type="button" id="open-prompt" class="link-button" aria-haspopup="dialog">see the prompt</button>.</p>
             </div>
           </div>
 
@@ -98,6 +98,31 @@
           </div>
         </form>
       </section>
+
+      <dialog id="prompt-dialog" class="prompt-dialog" aria-labelledby="prompt-title" aria-describedby="prompt-steps">
+        <h2 id="prompt-title">Export an X profile with Grok</h2>
+        <p id="prompt-steps">Paste this into <a href="https://grok.com" target="_blank" rel="noopener">Grok</a>, replace <code>USERNAME</code> with their handle (without the @), then save the answer as a <code>.md</code> file and upload it here.</p>
+        <pre id="prompt-text" class="prompt-text" tabindex="0">Create a Markdown profile export of the X account @USERNAME for B2B sales research.
+Include only professional, publicly posted information. Use these sections:
+
+# @USERNAME
+## Bio
+Their current bio, copied exactly.
+## Role and company
+Current role, company and past companies, as stated on X.
+## Topics they post about
+3 to 6 work topics, one line each.
+## Recent posts
+10 recent original posts about work, product, industry or hiring. Copy each
+post's text exactly, word for word, with its date. Skip replies and reposts.
+
+Do not paraphrase quoted text, do not guess, and leave out personal life,
+family, health, politics, religion and location. Output only the Markdown.</pre>
+        <div class="dialog-actions">
+          <button type="button" id="close-prompt" class="quiet">Close</button>
+          <button type="button" id="copy-prompt" class="primary small" autofocus>Copy to clipboard</button>
+        </div>
+      </dialog>
 
       <ol id="log" class="log" aria-live="polite" aria-label="Progress"></ol>
       <div id="error" class="error" role="alert" hidden></div>

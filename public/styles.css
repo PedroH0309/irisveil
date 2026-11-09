@@ -314,6 +314,68 @@ button:disabled {
   opacity: 0.72;
 }
 
+.primary.small {
+  font-size: 0.9375rem;
+  min-height: 0;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.link-button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--iris);
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.prompt-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--sheet);
+  color: var(--ink);
+  padding: 24px;
+  box-shadow: 0 24px 60px rgba(20, 12, 60, 0.28);
+}
+.prompt-dialog::backdrop {
+  background: rgba(23, 20, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+.prompt-dialog h2 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 1.375rem;
+}
+.prompt-dialog p {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+.prompt-dialog a {
+  color: var(--iris);
+}
+.prompt-text {
+  margin: 0;
+  padding: 14px 16px;
+  max-height: 46vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .quiet {
   border: 1.5px solid var(--line);
   background: transparent;

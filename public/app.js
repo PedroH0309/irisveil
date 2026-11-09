@@ -333,6 +333,16 @@
     });
   }
 
+  const promptDialog = $('prompt-dialog');
+  $('open-prompt').addEventListener('click', () => promptDialog.showModal());
+  $('close-prompt').addEventListener('click', () => promptDialog.close());
+  // Clicking the dimmed backdrop (outside the dialog box) closes it too; Escape is native.
+  promptDialog.addEventListener('click', (event) => {
+    if (event.target === promptDialog) promptDialog.close();
+  });
+  const copyPromptButton = $('copy-prompt');
+  copyPromptButton.addEventListener('click', () => copyText($('prompt-text').textContent, copyPromptButton));
+
   async function run() {
     if (running) return;
     const url = urlInput.value.trim();
