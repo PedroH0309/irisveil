@@ -27,7 +27,7 @@ Keep the cursor slow and deliberate, and put the captions on screen: many people
 
 Upload the video to the post itself, and put the live URL and the repo at the end. A starting point:
 
-> Most AI cold-email tools personalise by guessing. One invented funding round and the email is worse than generic.
+> Most AI cold-email tools personalize by guessing. One invented funding round and the email is worse than generic.
 >
 > I built Iris to fix that: paste a company's website, and it drafts three first-touch emails using only facts it can quote word for word from that site. Every quote is checked in code, and anything it can't find is dropped, with the receipts shown.
 >

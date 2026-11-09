@@ -13,7 +13,7 @@ Paste a company's website. Iris reads it, keeps only the claims it can quote wor
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](.nvmrc)
 [![Runs on free tiers](https://img.shields.io/badge/Cost-%240%20to%20run-5B3FD6?style=flat-square)](#-free-model-providers)
 
-[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Contribute](.github/CONTRIBUTING.md) · [Get help](.github/SUPPORT.md)
+[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deploy free](#-deploy-it-free-on-render) · [Contribute](.github/CONTRIBUTING.md) · [Get help](.github/SUPPORT.md) · [Security](SECURITY.md)
 
 Built by [YourAKShaw](https://github.com/YourAKShaw), an AI agents and automation studio for founder-led teams.
 
@@ -146,7 +146,7 @@ iris serve --claude      # web app at http://127.0.0.1:3000, answered by Claude 
 
 Each call is a single headless turn, run from an empty temporary folder, with tools or web search turned off where the CLI allows it and in a read-only sandbox for Codex; Iris checks the answer exactly as it checks an API response. Usage counts against your CLI's plan, not an API key. A local CLI is slower than an API (a run takes about a minute), so the defaults rise to `LLM_TIMEOUT_SECONDS=240` and `RUN_TIMEOUT_SECONDS=600`. Without a flag, Iris uses the provider in `.env` and stops with a clear message if no key is set. `iris serve --claude` only works where that CLI is installed, so it is for running the web app on your own machine.
 
-### Personalise with LinkedIn and X
+### Personalize with LinkedIn and X
 
 LinkedIn and X block automated reads, so Iris takes the recipient's profiles as files instead. Use either one, or both.
 
@@ -301,23 +301,35 @@ Being explicit about these is part of the design:
 ```text
 iris/
 ├── src/
-│   ├── cli.ts          # Entry point: research command and `serve`
+│   ├── cli.ts          # Entry point: research command, `serve` and the local CLI flags
 │   ├── pipeline.ts     # Input validation and fetch → research → verify → draft
 │   ├── site.ts         # SSRF-guarded fetcher, redirects, limits, page discovery
 │   ├── net-guard.ts    # URL policy and connect-time IP checks
 │   ├── extract.ts      # HTML → text, metadata and link scoring
+│   ├── profiles.ts     # LinkedIn PDF and X Markdown profile files
 │   ├── research.ts     # Research prompt, schema and quote verification
 │   ├── outreach.ts     # Drafting prompt, email rules and filtering
 │   ├── llm.ts          # OpenAI-compatible client, retries, JSON repair
+│   ├── local-agent.ts  # Claude Code, Codex, Antigravity and Grok CLIs as the model
 │   ├── server.ts       # HTTP server, NDJSON streaming, security headers
 │   ├── limits.ts       # Per-IP window, daily budget, TTL cache
 │   ├── format.ts       # Terminal and Markdown rendering
-│   └── config.ts       # Environment parsing and provider presets
+│   ├── theme.ts        # Brand colours, ANSI styling and the terminal masthead
+│   ├── cli-output.ts   # Run header and progress lines for the CLI
+│   ├── spinner.ts      # Animated loader for terminals
+│   ├── terminal-log.ts # Pretty server logs and startup banner
+│   ├── config.ts       # Environment parsing and provider presets
+│   ├── errors.ts       # Error codes and user-facing messages
+│   ├── chars.ts        # Character-class helper for invisible characters
+│   └── version.ts      # Package version
 ├── public/             # Web app: HTML, CSS, JS, self-hosted fonts (OFL)
 ├── test/               # Unit and end-to-end tests with a fixture site and fake model server
-├── docs/DEMO.md        # Script for a 60-second screen recording
+├── docs/               # Screenshot and a script for a 60-second demo recording
+├── .github/            # Contributing, support, CI, Dependabot, issue and PR templates
 ├── render.yaml         # Free Render deployment
-└── .github/            # This README, contributing, support, security, CI, templates
+├── README.md           # This file
+├── SECURITY.md         # Vulnerability reporting policy
+└── LICENSE             # MIT License
 ```
 
 ## 🧪 Development
