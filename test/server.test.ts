@@ -64,6 +64,8 @@ describe('HTTP server', () => {
     const meta = (await (await fetch(`${base}/api/meta`)).json()) as Record<string, unknown>;
     assert.equal(meta.model, 'fake-model');
     assert.ok(!JSON.stringify(meta).includes('apiKey'));
+    // AGPL-3.0 section 13: the web app links users to the source of the running version.
+    assert.equal(meta.sourceUrl, 'https://github.com/YourAKShaw/irisveil');
   });
 
   it('rejects non-JSON, cross-origin and invalid requests', async () => {

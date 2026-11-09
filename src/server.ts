@@ -164,6 +164,7 @@ export async function createIrisServer(options: IrisServerOptions): Promise<Iris
         provider: llm.provider,
         model: llm.model,
         sender: config.sender,
+        sourceUrl: config.server.sourceUrl,
         limits: {
           perIp: config.server.rateLimitPerIp,
           windowMinutes: Math.round(config.server.rateLimitWindowMs / 60_000),

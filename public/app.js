@@ -425,6 +425,7 @@
     .then((response) => (response.ok ? response.json() : null))
     .then((meta) => {
       if (!meta) return;
+      if (meta.sourceUrl) $('source-link').href = meta.sourceUrl;
       if (!senderNameInput.value) senderNameInput.value = meta.sender.name;
       if (!senderCompanyInput.value) senderCompanyInput.value = meta.sender.company;
       if (!offerInput.value) offerInput.value = meta.sender.offer;

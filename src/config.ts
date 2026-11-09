@@ -97,6 +97,8 @@ export interface ServerConfig {
   maxConcurrentRuns: number;
   cacheTtlMs: number;
   cacheMaxEntries: number;
+  /** Where users of this deployment get its source code, as AGPL-3.0 section 13 requires. */
+  sourceUrl: string;
 }
 
 export interface IrisConfig {
@@ -156,6 +158,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
     problems.push(`${name} must be true or false (got "${raw}").`);
     return fallback;
   };
+
+  // --- Source code offer (AGPL-3.0 section 13) ---------------------------------
+  const sourceUrl = str('IRISVEIL_SOURCE_URL') ?? 'https://github.com/YourAKShaw/irisveil';
+  if (!isHttpUrl(sourceUrl)) problems.push(`IRISVEIL_SOURCE_URL must be an http(s) URL (got "${sourceUrl}").`);
 
   // --- LLM -------------------------------------------------------------------
   const providerRaw = (str('LLM_PROVIDER') ?? 'groq').toLowerCase();
@@ -254,6 +260,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
       maxConcurrentRuns: int('MAX_CONCURRENT_RUNS', 2, 1, 50),
       cacheTtlMs: int('CACHE_TTL_MINUTES', 360, 0, 10_080) * 60_000,
       cacheMaxEntries: 200,
+      sourceUrl,
     },
     runTimeoutMs: int('RUN_TIMEOUT_SECONDS', options.localAgent ? 600 : 90, 15, 1200) * 1000,
   };

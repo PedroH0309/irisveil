@@ -233,6 +233,7 @@ All settings are environment variables, read from `.env` in the working director
 | `DAILY_RUN_LIMIT` | `25` | Fresh runs per UTC day, sized for Groq's free daily token quota |
 | `MAX_CONCURRENT_RUNS` | `2` | Runs in flight at once |
 | `CACHE_TTL_MINUTES` | `360` | Identical inputs are served from memory; `0` disables |
+| `IRISVEIL_SOURCE_URL` | this repository | Source code link in the web app footer. If you run a modified version as a network service, the AGPL-3.0 requires pointing it at your source |
 | `RUN_TIMEOUT_SECONDS` | `90` (`600` with a CLI flag) | Hard limit for a whole run, up to 1200 |
 
 ## 💸 Free model providers

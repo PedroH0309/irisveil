@@ -66,5 +66,8 @@ describe('local agent CLIs', () => {
     const config = loadConfig({}, { localAgent: true });
     assert.equal(config.llm.timeoutMs, 240_000);
     assert.equal(config.runTimeoutMs, 600_000);
+    assert.equal(loadConfig({}, { localAgent: true }).server.sourceUrl, 'https://github.com/YourAKShaw/irisveil');
+    assert.equal(loadConfig({ IRISVEIL_SOURCE_URL: 'https://git.example/fork' }, { localAgent: true }).server.sourceUrl, 'https://git.example/fork');
+    assert.throws(() => loadConfig({ IRISVEIL_SOURCE_URL: 'ftp://x' }, { localAgent: true }), /IRISVEIL_SOURCE_URL/);
   });
 });
