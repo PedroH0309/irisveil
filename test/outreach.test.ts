@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEmail, parseRecipient, wordCount } from '../src/outreach.js';
+import { checkEmail, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
 
 const ids = new Set(['s1', 's2']);
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
@@ -58,4 +58,27 @@ describe('parseRecipient', () => {
 
 describe('wordCount', () => {
   it('counts across newlines', () => assert.equal(wordCount('Hi there,\n\nthree words here'), 5));
+});
+
+describe('fact ids in drafts', () => {
+  const ten = new Set(['s1', 's2', 's10']);
+
+  it('asks for a rewrite when the body or subject cites fact ids', () => {
+    assert.match(checkEmail(email({ body: `${words(60)} (S1)` }), ids, 0).join(' '), /fact ids/);
+    assert.match(checkEmail(email({ subject: 'Your launch, s2' }), ids, 0).join(' '), /fact ids/);
+  });
+
+  it('strips bracketed and bare ids and tidies the punctuation left behind', () => {
+    assert.equal(stripFactIds('You shipped offline sync (S1), which is rare.', ten), 'You shipped offline sync, which is rare.');
+    assert.equal(stripFactIds('Saw your hiring push [s2, S10].', ten), 'Saw your hiring push.');
+    assert.equal(stripFactIds('Two things stood out (facts: s1 and s2).\nS10 too.', ten), 'Two things stood out.\ntoo.');
+    assert.equal(stripFactIds('Hi Priya,\n\nYour S1 launch.', ten), 'Hi Priya,\n\nYour launch.');
+  });
+
+  it('leaves ordinary text alone', () => {
+    const text = 'Your Series B and 2 launches in Q1 (both in 2026) stood out.';
+    assert.equal(mentionsFactIds(text, ten), false);
+    assert.equal(stripFactIds(text, ten), text);
+    assert.equal(stripFactIds('We shipped 1 thing (1).', new Set(['1'])), 'We shipped 1 thing.', 'numeric ids only go when bracketed');
+  });
 });

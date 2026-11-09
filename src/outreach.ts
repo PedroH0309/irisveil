@@ -62,6 +62,43 @@ export function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function idPatterns(validIds: ReadonlySet<string>): { group: RegExp; bare: RegExp | undefined } | undefined {
+  const ids = [...validIds].filter(Boolean).sort((a, b) => b.length - a.length).map(escapeRegExp);
+  if (ids.length === 0) return undefined;
+  const join = '\\s*(?:,|&|/|and)\\s*';
+  const id = `(?:${ids.join('|')})`;
+  // "(s1)", "[S1, S2]", "(facts: s1 and s3)": any bracketed list made only of fact ids.
+  const group = new RegExp(`[ \\t]*[([](?:(?:facts?|see|refs?|sources?)\\s*:?\\s*)?${id}(?:${join}${id})*[)\\]]`, 'gi');
+  // Bare "S1" only for letter+digit ids, so numeric ids never eat real numbers in the prose.
+  const word = ids.filter((value) => /^[a-z]+\d+$/i.test(value));
+  const wordId = `\\b(?:${word.join('|')})\\b`;
+  const bare = word.length ? new RegExp(`[ \\t]*${wordId}(?:${join}${wordId})*`, 'gi') : undefined;
+  return { group, bare };
+}
+
+/** True when the text cites internal fact ids such as "S1" that a recipient must never see. */
+export function mentionsFactIds(text: string, validIds: ReadonlySet<string>): boolean {
+  const patterns = idPatterns(validIds);
+  if (!patterns) return false;
+  return new RegExp(patterns.group.source, 'i').test(text) || Boolean(patterns.bare && new RegExp(patterns.bare.source, 'i').test(text));
+}
+
+/** Last-resort cleanup so a draft can be copied and sent as is. */
+export function stripFactIds(text: string, validIds: ReadonlySet<string>): string {
+  const patterns = idPatterns(validIds);
+  if (!patterns) return text;
+  let out = text.replace(patterns.group, '');
+  if (patterns.bare) out = out.replace(patterns.bare, '');
+  return out
+    .replace(/[ \t]+([,.;:!?])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/^[ \t]+/gm, '')
+    .trim();
+}
+
 export function checkEmail(email: EmailDraft, validIds: ReadonlySet<string>, index: number): string[] {
   const label = `emails[${index}]`;
   const problems: string[] = [];
@@ -77,6 +114,9 @@ export function checkEmail(email: EmailDraft, validIds: ReadonlySet<string>, ind
   }
   if (PLACEHOLDER_PATTERN.test(email.body) || PLACEHOLDER_PATTERN.test(email.subject)) {
     problems.push(`${label} must not contain placeholders such as [Name] or {{...}}.`);
+  }
+  if (mentionsFactIds(email.body, validIds) || mentionsFactIds(email.subject, validIds)) {
+    problems.push(`${label} must not mention fact ids such as ${[...validIds][0] ?? 's1'} in the subject or body; list them only in basedOn.`);
   }
   const known = email.basedOn.filter((id) => validIds.has(id));
   if (known.length === 0) {
@@ -107,7 +147,7 @@ Write exactly 3 emails to ${audience}. Each email takes a different angle ground
 
 Hard rules:
 - Mention only facts from the VERIFIED FACTS list. Never invent metrics, customers, funding, news, mutual connections or compliments.
-- Each email lists in "basedOn" the fact ids it relies on (at least one).
+- Each email lists in "basedOn" the fact ids it relies on (at least one). Never write fact ids (s1, S2, [s3]) in the subject or body: the recipient must not see them.
 - Hypotheses are guesses: phrase them as a question or "I'd guess", never as fact.
 - Body: 60 to 130 words. Subject: under 60 characters, specific, no clickbait, no emojis, no ALL CAPS.
 - Plain text only: no links or URLs, no placeholders like [Name], no markdown.
@@ -154,7 +194,8 @@ export async function draftOutreach(
   const seenSubjects = new Set<string>();
   const emails: OutreachEmail[] = [];
   let rejected = 0;
-  result.value.emails.forEach((email, index) => {
+  result.value.emails.forEach((raw, index) => {
+    const email = { ...raw, subject: stripFactIds(raw.subject, validIds), body: stripFactIds(raw.body, validIds) };
     const subjectKey = email.subject.toLowerCase();
     if (checkEmail(email, validIds, index).length > 0 || seenSubjects.has(subjectKey)) {
       rejected += 1;
