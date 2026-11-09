@@ -7,7 +7,8 @@ import { createLlmClient } from './llm.js';
 import { parseRunInput, runIris } from './pipeline.js';
 import { renderMarkdown, renderTerminal, safeText } from './format.js';
 import { createIrisServer, createJsonLogger } from './server.js';
-import { colorDepth, createPrettyLogger, renderBanner, wantsPrettyLogs } from './terminal-log.js';
+import { createPrettyLogger, renderBanner, wantsPrettyLogs } from './terminal-log.js';
+import { colorDepth } from './theme.js';
 import { VERSION } from './version.js';
 
 const HELP = `Iris ${VERSION}: cited lead research and outreach drafts from a company website.

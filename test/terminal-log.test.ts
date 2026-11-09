@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { colorDepth, createPrettyLogger, renderBanner, wantsPrettyLogs } from '../src/terminal-log.js';
+import { createPrettyLogger, renderBanner, wantsPrettyLogs } from '../src/terminal-log.js';
+import { colorDepth } from '../src/theme.js';
 
 const ESC = String.fromCharCode(0x1b);
 const info = { url: 'http://127.0.0.1:3000', provider: 'groq', model: 'openai/gpt-oss-120b', version: '1.0.0' };
