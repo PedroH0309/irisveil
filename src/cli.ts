@@ -22,6 +22,8 @@ Usage
 Options
   -t, --to <"Name, Role">   Who the emails are for, e.g. "Priya Rao, Head of Growth"
   -o, --offer <text>        What you sell (defaults to SENDER_OFFER in .env)
+      --linkedin <url>      Recipient's LinkedIn profile, researched for personal context
+      --x <url|@handle>     Recipient's X profile, researched for personal context
       --out <file>          Also save the result (.md for Markdown, .json for JSON)
       --json                Print the full result as JSON instead of the formatted view
   -q, --quiet               Hide progress messages
@@ -33,6 +35,8 @@ Options
 Examples
   iris linear.app
   iris https://posthog.com --to "Priya Rao, Head of Growth" --out posthog.md
+  iris linear.app --to "Priya Rao" --linkedin linkedin.com/in/priya-rao
+  iris linear.app --to "Priya Rao" --linkedin linkedin.com/in/priya-rao --x @priyarao
   iris serve --port 8080
 
 Configuration lives in .env (see .env.example). Docs: https://github.com/YourAKShaw/iris`;
@@ -66,6 +70,8 @@ async function main(argv: string[]): Promise<number> {
       options: {
         to: { type: 'string', short: 't' },
         offer: { type: 'string', short: 'o' },
+        linkedin: { type: 'string' },
+        x: { type: 'string' },
         out: { type: 'string' },
         json: { type: 'boolean' },
         quiet: { type: 'boolean', short: 'q' },
@@ -113,7 +119,7 @@ async function main(argv: string[]): Promise<number> {
 
   let input;
   try {
-    input = parseRunInput({ url: command, recipient: values.to, offer: values.offer });
+    input = parseRunInput({ url: command, recipient: values.to, offer: values.offer, linkedin: values.linkedin, x: values.x });
   } catch (error) {
     printError(error);
     return EXIT.usage;
@@ -127,7 +133,7 @@ async function main(argv: string[]): Promise<number> {
   if (fancy) {
     process.stderr.write(
       renderRunHeader(
-        { target: input.url, recipient: input.recipient ?? undefined, provider: config.llm.provider, model: config.llm.model, version: VERSION },
+        { target: input.url, recipient: input.recipient ?? undefined, linkedin: input.linkedin, x: input.x, provider: config.llm.provider, model: config.llm.model, version: VERSION },
         errDepth,
       ),
     );

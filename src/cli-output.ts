@@ -11,6 +11,8 @@ import { BRAND, clock, infoRow, renderMasthead, style, type ColorDepth, type Rgb
 export interface RunHeaderInfo {
   target: string;
   recipient: string | undefined;
+  linkedin?: string | undefined;
+  x?: string | undefined;
   provider: string;
   model: string;
   version: string;
@@ -24,6 +26,8 @@ export function renderRunHeader(info: RunHeaderInfo, depth: ColorDepth): string 
     infoRow(s, BRAND.mint, 'target', s.bold(s.fg(BRAND.sky, safeText(info.target)))),
   );
   if (info.recipient) lines.push(infoRow(s, BRAND.glint, 'for', s.italic(safeText(info.recipient))));
+  if (info.linkedin) lines.push(infoRow(s, BRAND.sky, 'linkedin', s.italic(safeText(info.linkedin))));
+  if (info.x) lines.push(infoRow(s, BRAND.sky, 'x', s.italic(safeText(info.x))));
   lines.push(
     infoRow(s, BRAND.violet, 'model', s.italic(`${safeText(info.provider)} ${s.dim('·')} ${safeText(info.model)}`)),
     `  ${s.dim('─'.repeat(52))}`,
