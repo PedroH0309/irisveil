@@ -1,6 +1,8 @@
 <div align="center">
 
-# 👁️ Iris
+<img src="../public/favicon.svg" width="112" height="112" alt="Iris logo: a violet ring around a violet iris with a dark pupil and a yellow glint">
+
+# Iris
 
 **Cold emails built on facts you can check.**
 
