@@ -9,7 +9,7 @@
 Paste a company's website. Iris reads it, keeps only the claims it can quote word for word, and drafts three first-touch emails from them.
 
 [![CI](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml/badge.svg)](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-5B3FD6?style=flat-square)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-5B3FD6?style=flat-square)](LICENSE)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](.nvmrc)
 [![Runs on free tiers](https://img.shields.io/badge/Cost-%240%20to%20run-5B3FD6?style=flat-square)](#-free-model-providers)
 
@@ -329,7 +329,7 @@ iris/
 ├── render.yaml         # Free Render deployment
 ├── README.md           # This file
 ├── SECURITY.md         # Vulnerability reporting policy
-└── LICENSE             # MIT License
+└── LICENSE             # GNU AGPL-3.0
 ```
 
 ## 🧪 Development
@@ -365,4 +365,8 @@ Contributions are welcome, especially real sites where extraction or verificatio
 
 ## License
 
-Distributed under the **MIT License**. See [LICENSE](LICENSE). Bundled fonts (Newsreader, Hanken Grotesk) are under the SIL Open Font License; see [`public/fonts/`](public/fonts/).
+Copyright (C) 2026 Ayush Kumar Shaw.
+
+Iris is free and open-source software, licensed under the **[GNU Affero General Public License v3.0 only](LICENSE)** (AGPL-3.0-only). You may use, study, change and share it, including commercially. If you run a modified version as a network service, the AGPL requires you to offer its users the complete source code of your version under the same license.
+
+Versions released before this change remain available under the MIT License they were published with. If the AGPL does not fit your use, contact the author about a separate commercial license. Bundled fonts (Newsreader, Hanken Grotesk) are under the SIL Open Font License; see [`public/fonts/`](public/fonts/).

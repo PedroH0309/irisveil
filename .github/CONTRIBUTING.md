@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml/badge.svg)](https://github.com/YourAKShaw/iris/actions/workflows/ci.yml)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-334155?style=flat-square)](../.nvmrc)
-[![License: MIT](https://img.shields.io/badge/License-MIT-5B3FD6?style=flat-square)](../LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-5B3FD6?style=flat-square)](../LICENSE)
 
 [Project overview](../README.md) · [Get help](SUPPORT.md) · [Security policy](../SECURITY.md)
 
