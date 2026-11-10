@@ -3,6 +3,7 @@ import { IrisVeilError } from './errors.js';
 import { completeStructured, type ChatMessage, type LlmClient, type LlmUsage } from './llm.js';
 import type { SenderProfile } from './config.js';
 import type { SourcePage } from './site.js';
+import { DETERMINISTIC_VALIDATOR, checkClaimAgainstQuote, type ClaimVerdict } from './consistency.js';
 import { charClass } from './chars.js';
 
 /**
@@ -83,6 +84,11 @@ export interface DroppedClaim {
   claim: string;
   quote: string;
   reason: string;
+  /** Page the quote was found on, when provenance passed. */
+  sourceUrl?: string;
+  /** Claim–evidence verdict, when provenance passed and a validator ran. */
+  verdict?: Exclude<ClaimVerdict, 'supported'>;
+  validator?: string;
 }
 
 export interface ResearchBrief {
@@ -214,6 +220,18 @@ export function verifyResearch(draft: ResearchDraft, pages: SourcePage[]): Resea
       continue;
     }
     seenQuotes.add(key);
+    const guard = checkClaimAgainstQuote(signal.claim, signal.quote);
+    if (guard.verdict === 'contradicted') {
+      dropped.push({
+        claim: signal.claim,
+        quote: signal.quote,
+        sourceUrl: match.url,
+        verdict: 'contradicted',
+        validator: DETERMINISTIC_VALIDATOR,
+        reason: guard.reason ?? 'claim contradicts its quote',
+      });
+      continue;
+    }
     const id = `s${signals.length + 1}`;
     if (!idMap.has(signal.id)) idMap.set(signal.id, id);
     signals.push({ id, category: signal.category, claim: signal.claim, quote: signal.quote, sourceUrl: match.url });

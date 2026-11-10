@@ -86,15 +86,21 @@ describe('verifyResearch', () => {
     assert.throws(() => verifyResearch(invented, pages), (error: unknown) => error instanceof IrisVeilError && error.code === 'INSUFFICIENT_EVIDENCE');
   });
 
-  it('characterizes a contradictory claim with a real quote', () => {
+  it('drops a contradictory claim with a real quote and records why', () => {
     const quote = "We don't serve enterprise teams in any market.";
+    const filler = 'Our platform ships weekly releases for every customer.';
     const draft = ResearchDraftSchema.parse({
       company: { name: 'Example', oneLiner: 'Example company' },
-      signals: [{ id: 's1', category: 'customers', claim: 'Serves enterprise teams.', quote, sourceUrl: ORIGIN }],
+      signals: [
+        { id: 's1', category: 'customers', claim: 'Serves enterprise teams.', quote, sourceUrl: ORIGIN },
+        { id: 's2', category: 'product', claim: 'Ships weekly releases.', quote: filler, sourceUrl: ORIGIN },
+      ],
     });
-    const result = verifyResearch(draft, [{ url: ORIGIN, title: '', description: '', text: quote }]);
-    // Current behavior checks provenance only; the accepted claim reverses the quote.
-    assert.equal(result.signals[0]?.claim, 'Serves enterprise teams.');
+    const result = verifyResearch(draft, [{ url: ORIGIN, title: '', description: '', text: `${quote} ${filler}` }]);
+    assert.deepEqual(result.signals.map((s) => s.claim), ['Ships weekly releases.']);
+    assert.match(result.dropped[0]!.reason, /negation/);
+    assert.equal(result.dropped[0]?.verdict, 'contradicted');
+    assert.equal(result.dropped[0]?.sourceUrl, ORIGIN);
   });
 
   it('drops duplicate quotes', () => {
