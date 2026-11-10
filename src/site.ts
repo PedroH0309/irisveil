@@ -8,11 +8,18 @@ import { extractDocument, pickCandidateLinks } from './extract.js';
 import type { FetchConfig } from './config.js';
 import { USER_AGENT } from './version.js';
 
+/** Where a page came from; decides how its facts may be attributed. */
+export type SourceType = 'company_site' | 'third_party' | 'recipient_profile';
+
 export interface SourcePage {
   url: string;
   title: string;
   description: string;
   text: string;
+  /** Defaults to 'company_site' when absent. */
+  sourceType?: SourceType;
+  /** ISO time the page was read. */
+  retrievedAt?: string;
 }
 
 export interface CrawlResult {
@@ -175,7 +182,7 @@ function mapNetworkError(error: unknown, outer: AbortSignal | undefined, deadlin
   return new IrisVeilError('FETCH_FAILED', "Couldn't load the website.", { detail });
 }
 
-function isHtml(contentType: string): boolean {
+export function isHtml(contentType: string): boolean {
   return contentType === '' || contentType.includes('text/html') || contentType.includes('application/xhtml');
 }
 
@@ -228,8 +235,11 @@ export async function crawlSite(
   const startShare = documents.length === 1 ? budget : Math.round(budget * 0.45);
   const otherShare = documents.length === 1 ? 0 : Math.floor((budget - startShare) / (documents.length - 1));
 
+  const retrievedAt = new Date().toISOString();
   const pages: SourcePage[] = documents.map(({ url, doc }, index) => ({
     url,
+    sourceType: 'company_site',
+    retrievedAt,
     title: doc.title.slice(0, 200),
     description: doc.description.slice(0, 400),
     text: truncateAtLine(doc.text, index === 0 ? startShare : otherShare),
@@ -252,7 +262,7 @@ export async function crawlSite(
   };
 }
 
-function truncateAtLine(text: string, max: number): string {
+export function truncateAtLine(text: string, max: number): string {
   if (text.length <= max) return text;
   const cut = text.lastIndexOf('\n', max);
   return text.slice(0, cut > max * 0.6 ? cut : max).trimEnd();

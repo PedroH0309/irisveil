@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { IrisVeilError, toIrisVeilError } from './errors.js';
 import { LIMITS, type IrisVeilConfig, type SenderProfile } from './config.js';
-import { crawlSite } from './site.js';
+import { crawlSite, type SourceType } from './site.js';
+import { MAX_EXTERNAL_SOURCES, fetchExternalSources } from './sources.js';
 import { researchCompany, type CompanyProfile, type DroppedClaim, type Hypothesis, type Signal } from './research.js';
 import { draftOutreach, parseRecipient, type OutreachEmail } from './outreach.js';
 import type { LlmClient } from './llm.js';
@@ -23,6 +24,8 @@ export interface RunInput {
   linkedin?: ProfileFile | undefined;
   /** A Markdown export of the recipient's X profile, made with Grok. */
   x?: ProfileFile | undefined;
+  /** Opt-in third-party URLs (news, press releases). Empty means first-party only. */
+  sources?: string[] | undefined;
 }
 
 export type Stage = 'fetch' | 'research' | 'verify' | 'draft' | 'done';
@@ -35,18 +38,19 @@ export interface ProgressEvent {
 export interface IrisVeilResult {
   schemaVersion: 1;
   generatedAt: string;
-  input: { url: string; recipient: string | null; offer: string; senderName: string; senderRole: string; senderCompany: string; senderAddress: string; senderMobile: string; senderEmail: string; senderWebsite: string; linkedin: string | null; x: string | null };
+  input: { url: string; recipient: string | null; offer: string; senderName: string; senderRole: string; senderCompany: string; senderAddress: string; senderMobile: string; senderEmail: string; senderWebsite: string; linkedin: string | null; x: string | null; sources: string[] };
   company: CompanyProfile;
   signals: Signal[];
   hypotheses: Hypothesis[];
   emails: OutreachEmail[];
-  sources: Array<{ url: string; title: string }>;
+  sources: Array<{ url: string; title: string; sourceType: SourceType; retrievedAt: string }>;
   dropped: DroppedClaim[];
   warnings: string[];
   stats: {
     provider: string;
     model: string;
     pagesRead: number;
+    externalSourcesRead: number;
     signalsProposed: number;
     signalsVerified: number;
     durationMs: number;
@@ -111,7 +115,27 @@ const RunInputSchema = z.object({
   senderWebsite: oneLine(LIMITS.senderWebsiteChars, `Your company website must be ${LIMITS.senderWebsiteChars} characters or fewer.`),
   linkedin: profileFile('linkedin'),
   x: profileFile('x'),
+  sources: z
+    .array(z.string().trim().max(LIMITS.urlChars, 'A source URL is too long.'))
+    .max(MAX_EXTERNAL_SOURCES, `Add at most ${MAX_EXTERNAL_SOURCES} external sources.`)
+    .optional()
+    .transform((list) => list?.filter(Boolean)),
 });
+
+function normaliseUrl(raw: string, what: string): string {
+  const url = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+  let normalized: URL;
+  try {
+    normalized = new URL(url);
+  } catch {
+    throw new IrisVeilError('INVALID_INPUT', `${what} does not look like a website address.`);
+  }
+  if (normalized.protocol !== 'http:' && normalized.protocol !== 'https:') {
+    throw new IrisVeilError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
+  }
+  normalized.hash = '';
+  return normalized.toString();
+}
 
 /** Validates untrusted input (CLI args or HTTP body) and normalises the URL. */
 export function parseRunInput(raw: unknown): RunInput {
@@ -119,20 +143,10 @@ export function parseRunInput(raw: unknown): RunInput {
   if (!parsed.success) {
     throw new IrisVeilError('INVALID_INPUT', parsed.error.issues[0]?.message ?? 'Invalid input.');
   }
-  let url = parsed.data.url;
-  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = `https://${url}`;
-  let normalized: URL;
-  try {
-    normalized = new URL(url);
-  } catch {
-    throw new IrisVeilError('INVALID_INPUT', 'That does not look like a website address.');
-  }
-  if (normalized.protocol !== 'http:' && normalized.protocol !== 'https:') {
-    throw new IrisVeilError('INVALID_INPUT', 'Only http:// and https:// websites are supported.');
-  }
-  normalized.hash = '';
-  const { url: _url, ...rest } = parsed.data;
-  return { url: normalized.toString(), ...rest };
+  const { url: rawUrl, sources, ...rest } = parsed.data;
+  const url = normaliseUrl(rawUrl, 'That');
+  const external = sources?.length ? [...new Set(sources.map((s) => normaliseUrl(s, `The source "${s.slice(0, 80)}"`)))] : undefined;
+  return { url, ...rest, ...(external ? { sources: external } : {}) };
 }
 
 /** The sender for one run: per-run input wins, then .env. */
@@ -177,8 +191,19 @@ export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisV
         (profiles.length ? ` and ${profiles.map((p) => NETWORK_LABEL[p.network]).join(' + ')}` : ''),
     );
 
+    // Opt-in only: with no sources given, nothing beyond the company's own site is fetched.
+    const external = input.sources?.length
+      ? await fetchExternalSources(input.sources, crawl.finalUrl, [crawl.siteName, new URL(crawl.finalUrl).hostname.replace(/^www\./, '').split('.')[0]!], {
+          ...fetchOptions,
+          externalBudgetChars: config.fetch.externalBudgetChars,
+        })
+      : { pages: [], skipped: [], warnings: [], droppedChars: 0 };
+    if (input.sources?.length) {
+      emit('fetch', `Read ${external.pages.length} of ${input.sources.length} external source${input.sources.length === 1 ? '' : 's'}`);
+    }
+
     emit('research', `Extracting facts with ${llm.model}`);
-    const research = await researchCompany(llm, crawl.pages, sender, signal, profiles);
+    const research = await researchCompany(llm, [...crawl.pages, ...external.pages], sender, signal, profiles);
     const { brief } = research;
     emit(
       'verify',
@@ -190,6 +215,7 @@ export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisV
     const outreach = await draftOutreach(llm, brief, sender, parseRecipient(input.recipient), signal);
 
     const durationMs = Date.now() - startedAt;
+    const generatedAt = new Date().toISOString();
     emit('done', `Done in ${(durationMs / 1000).toFixed(1)}s`);
 
     for (const page of profiles) {
@@ -199,22 +225,32 @@ export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisV
     }
     const warnings = [...profileWarnings, ...outreach.warnings];
     if (crawl.skipped.length) warnings.push(`${crawl.skipped.length} supporting page(s) could not be read.`);
+    for (const skip of external.skipped) warnings.push(`External source ${skip.url} was not used: ${skip.reason}.`);
+    warnings.push(...external.warnings);
+    const conflicts = brief.dropped.filter((d) => d.verdict === 'conflict').length;
+    if (conflicts) warnings.push(`${conflicts} fact(s) were withheld because a third-party source and the company's site disagree.`);
 
     return {
       schemaVersion: 1,
-      generatedAt: new Date().toISOString(),
-      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderRole: sender.role, senderCompany: sender.company, senderAddress: sender.address, senderMobile: sender.mobile, senderEmail: sender.email, senderWebsite: sender.website, linkedin: input.linkedin?.name ?? null, x: input.x?.name ?? null },
+      generatedAt,
+      input: { url: crawl.finalUrl, recipient: input.recipient ?? null, offer: sender.offer, senderName: sender.name, senderRole: sender.role, senderCompany: sender.company, senderAddress: sender.address, senderMobile: sender.mobile, senderEmail: sender.email, senderWebsite: sender.website, linkedin: input.linkedin?.name ?? null, x: input.x?.name ?? null, sources: input.sources ?? [] },
       company: brief.company,
       signals: brief.signals,
       hypotheses: brief.hypotheses,
       emails: outreach.emails,
-      sources: [...crawl.pages, ...profiles].map((page) => ({ url: page.url, title: page.title })),
+      sources: [...crawl.pages, ...external.pages, ...profiles].map((page) => ({
+        url: page.url,
+        title: page.title,
+        sourceType: page.sourceType ?? 'company_site',
+        retrievedAt: page.retrievedAt ?? generatedAt,
+      })),
       dropped: brief.dropped,
       warnings,
       stats: {
         provider: llm.provider,
         model: llm.model,
         pagesRead: crawl.pages.length,
+        externalSourcesRead: external.pages.length,
         signalsProposed: brief.proposedSignals,
         signalsVerified: brief.signals.length,
         durationMs,

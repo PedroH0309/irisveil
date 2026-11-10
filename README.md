@@ -182,6 +182,23 @@ IrisVeil reads each file alongside the company site and keeps 1 to 3 professiona
 
 A file of the wrong kind (say, a Markdown file given as the LinkedIn PDF) stops the run with a clear message. When a file has nothing usable, IrisVeil says so in the result's warnings and writes the drafts from company research alone.
 
+### Add external sources (opt-in)
+
+By default IrisVeil reads only the company's own site. If you've found a news story or press release worth citing, pass it explicitly:
+
+```bash
+irisveil linear.app --source 'https://en.wikipedia.org/wiki/Linear_(software)'
+```
+
+Repeat `--source` up to three times; the web form has an **External sources** field, and the API takes `"sources": ["https://…"]`. IrisVeil never searches or picks URLs itself, and the model never browses.
+
+- **Same fetch rules.** Each URL goes through the SSRF-guarded fetcher, timeouts and size caps. A source that fails, has no readable text, duplicates another source (syndicated copies) or redirects back to the company's own site is skipped, with a warning.
+- **Bounded context.** All sources share `EXTERNAL_SOURCE_CHARS` (default 4,000). A longer page keeps the paragraphs that name the company, in their original order, chosen deterministically, and the result warns that it was trimmed. With no sources the prompt is unchanged.
+- **Attributed, never laundered.** Each fact records `sourceType` (`company_site`, `third_party` or `recipient_profile`) and `retrievedAt`, both taken from the page its quote was actually found on, not the page the model cited. Third-party claims are written as "Wikipedia reports that …", tagged as reports in every view, and drafts must attribute them ("I read on … that …").
+- **Same audit.** Third-party facts pass the same quote check and claim audit as company facts. If a third-party report and the company's site contradict each other, both facts are withheld with a `conflict` verdict and a warning.
+
+In a live comparison on linear.app with Claude Code, adding the Wikipedia page took a run from 7 to 8 proposed facts and kept one attributed third-party fact (the Series C size and headcount). It added about 1,100 prompt tokens and a few seconds. The audit dropped a second Wikipedia fact because its quote said only "it" rather than naming Linear. One comparison isn't a benchmark; enrichment stays opt-in.
+
 Progress goes to stderr and the result to stdout, so `irisveil acme.com --json -q | jq '.emails[0]'` works. Exit codes: `0` success, `1` the run failed (unreachable site, model error), `2` usage or configuration error, `130` cancelled with Ctrl+C. Set `IRISVEIL_DEBUG=1` to print operator detail behind an error.
 
 ## 🌐 Web app and API
@@ -228,6 +245,7 @@ All settings are environment variables, read from `.env` in the working director
 | `SENDER_NAME`, `SENDER_COMPANY`, `SENDER_OFFER` | YourAKShaw profile | Who the emails come from and what you sell (offer up to 500 characters) |
 | `SENDER_ROLE`, `SENDER_ADDRESS`, `SENDER_MOBILE`, `SENDER_EMAIL`, `SENDER_WEBSITE` | empty | Signature details: `Name \| Role`, company, address, `Mobile: …`, `email \| website`; empty ones are skipped |
 | `FETCH_MAX_PAGES` | `4` | Pages read per run (1 to 6) |
+| `EXTERNAL_SOURCE_CHARS` | `4000` | Characters shared by all opt-in external sources in a run (500 to 12,000) |
 | `FETCH_TIMEOUT_SECONDS` | `8` | Per page |
 | `IRISVEIL_ALLOW_PRIVATE_HOSTS` | `false` | **Tests only.** Turns SSRF protection off |
 | `HOST`, `PORT` | `127.0.0.1`, `3000` | Web server bind address. Use `HOST=0.0.0.0` in containers and on hosts |
@@ -281,7 +299,7 @@ Details and reporting: [SECURITY.md](SECURITY.md).
 Being explicit about these is part of the design:
 
 - **The claim audit is a model judgement, not proof.** It fails closed, so its usual error is dropping a fact that was fine. On the 36 labeled cases in `test/fixtures/claim-evidence.json` it accepted none of the 23 unsupported claims and rejected 0 to 2 of the 13 supported ones across runs with Claude Code. That's a small set, not a reliability guarantee: read each quote, and every draft, before sending. The company one-liner shown in the brief is the model's summary and isn't audited.
-- **The website, plus any profile files you give, is the only source.** No news or funding data. That's deliberate for v1: those sources can't be verified the same way for free. See the roadmap.
+- **By default the website, plus any profile files you give, is the only source.** External pages are used only when you supply them with `--source`; IrisVeil has no search, news or funding feed. Third-party pages can be wrong, stale or about a similarly named company: conflicts are caught only when rules detect a contradiction with a company-site fact, and a report can be accepted when the company's site says nothing either way.
 - **JavaScript-only sites** that render nothing server-side return "not enough readable text". IrisVeil doesn't run a browser.
 - **Some sites block bots** and return 403s. IrisVeil identifies itself honestly as `IrisVeilBot` rather than impersonating a browser.
 - **Prompts are tuned for English.**
@@ -310,6 +328,7 @@ irisveil/
 │   ├── cli.ts          # Entry point: research command, `serve` and the local CLI flags
 │   ├── pipeline.ts     # Input validation and fetch → research → verify → draft
 │   ├── site.ts         # SSRF-guarded fetcher, redirects, limits, page discovery
+│   ├── sources.ts      # Opt-in third-party sources: fetch, dedupe, snippet budget
 │   ├── net-guard.ts    # URL policy and connect-time IP checks
 │   ├── extract.ts      # HTML → text, metadata and link scoring
 │   ├── profiles.ts     # LinkedIn PDF and X Markdown profile files
@@ -359,7 +378,7 @@ The suite (Node's built-in runner, no network, no API key) covers the IP blockli
 ## 🗺️ Roadmap
 
 - Batch mode: a CSV of companies in, a CSV of briefs and drafts out.
-- Optional news and funding sources, kept behind the same verbatim-quote verification.
+- Search or news-provider adapters for external sources, only if measured runs show they add enough supported facts to justify the cost.
 - Opt-in headless rendering for JavaScript-only sites.
 - An evaluation set of real public sites that tracks verification rate and draft quality across models.
 - Export to Gmail drafts or a CRM.

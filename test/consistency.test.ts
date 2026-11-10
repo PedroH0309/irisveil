@@ -77,8 +77,8 @@ describe('applyJudgements', () => {
   const brief: ResearchBrief = {
     company: { name: 'A', oneLiner: 'B', offering: '', audience: '' },
     signals: [
-      { id: 's1', category: 'customers', claim: 'Serves enterprise.', quote: 'We serve small businesses.', sourceUrl: 'u' },
-      { id: 's2', category: 'product', claim: 'Ships weekly.', quote: 'We ship every week.', sourceUrl: 'u' },
+      { id: 's1', category: 'customers', claim: 'Serves enterprise.', quote: 'We serve small businesses.', sourceUrl: 'u', sourceType: 'company_site' as const, retrievedAt: 't' },
+      { id: 's2', category: 'product', claim: 'Ships weekly.', quote: 'We ship every week.', sourceUrl: 'u', sourceType: 'company_site' as const, retrievedAt: 't' },
     ],
     hypotheses: [
       { statement: 'h1', basedOn: ['s1'], confidence: 'low' },

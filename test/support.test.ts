@@ -72,15 +72,15 @@ describe('TtlCache', () => {
 const sample: IrisVeilResult = {
   schemaVersion: 1,
   generatedAt: '2026-10-19T00:00:00.000Z',
-  input: { url: 'https://acme.example/', recipient: null, offer: 'offer', senderName: 'Ayush', senderRole: '', senderCompany: 'YourAKShaw', senderAddress: '', senderMobile: '', senderEmail: '', senderWebsite: '', linkedin: null, x: null },
+  input: { url: 'https://acme.example/', recipient: null, offer: 'offer', senderName: 'Ayush', senderRole: '', senderCompany: 'YourAKShaw', senderAddress: '', senderMobile: '', senderEmail: '', senderWebsite: '', linkedin: null, x: null, sources: [] },
   company: { name: `Acme${ESC}[31m`, oneLiner: `Rockets${RLO}evil`, offering: '', audience: '' },
-  signals: [{ id: 's1', category: 'product', claim: 'Makes rockets', quote: 'We make rockets for road runners', sourceUrl: 'https://acme.example/' }],
+  signals: [{ id: 's1', category: 'product', claim: 'Makes rockets', quote: 'We make rockets for road runners', sourceUrl: 'https://acme.example/', sourceType: 'company_site' as const, retrievedAt: 't' }],
   hypotheses: [{ statement: 'Needs more coyotes', basedOn: ['s1'], confidence: 'low' }],
   emails: [{ angle: 'Rockets', subject: 'About your rockets', body: 'Hi team,\n\nBody text.', basedOn: ['s1'], wordCount: 4 }],
-  sources: [{ url: 'https://acme.example/', title: 'Acme' }],
+  sources: [{ url: 'https://acme.example/', title: 'Acme', sourceType: 'company_site', retrievedAt: 't' }],
   dropped: [],
   warnings: [],
-  stats: { provider: 'groq', model: 'm', pagesRead: 1, signalsProposed: 1, signalsVerified: 1, durationMs: 1234, promptTokens: 10, completionTokens: 5 },
+  stats: { provider: 'groq', model: 'm', pagesRead: 1, externalSourcesRead: 0, signalsProposed: 1, signalsVerified: 1, durationMs: 1234, promptTokens: 10, completionTokens: 5 },
 };
 
 describe('format', () => {

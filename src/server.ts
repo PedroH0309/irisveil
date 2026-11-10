@@ -219,7 +219,7 @@ export async function createIrisVeilServer(options: IrisVeilServerOptions): Prom
 
     const sender = resolveSender(input, config);
     const cacheKey = createHash('sha256')
-      .update(JSON.stringify([input.url, input.recipient ?? '', sender, fileHash(input.linkedin?.bytes), fileHash(input.x?.bytes), llm.model]))
+      .update(JSON.stringify([input.url, input.recipient ?? '', sender, fileHash(input.linkedin?.bytes), fileHash(input.x?.bytes), input.sources ?? [], llm.model]))
       .digest('hex');
     const host = new URL(input.url).hostname;
     const cached = cache.get(cacheKey);

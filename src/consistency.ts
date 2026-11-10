@@ -17,6 +17,7 @@ export interface GuardResult {
 }
 
 export const DETERMINISTIC_VALIDATOR = 'deterministic-guards@1';
+export const CONFLICT_VALIDATOR = 'source-conflict@1';
 
 const NEGATION = /\b(?:not|no|never|none|nor|without|cannot|neither)\b|n't\b/g;
 const NEGATION_WORD = /^(?:not|no|never|none|nor|without|cannot|neither)$/;
@@ -45,7 +46,7 @@ function contentWords(text: string): Set<string> {
 }
 
 /** Share of the claim's content words that also appear in the quote. */
-function overlap(claim: string, quote: string): number {
+export function overlap(claim: string, quote: string): number {
   const claimWords = contentWords(claim);
   if (claimWords.size === 0) return 0;
   const quoteWords = contentWords(quote);
