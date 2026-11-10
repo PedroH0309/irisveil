@@ -101,6 +101,7 @@ export function checkClaimAgainstQuote(claim: string, quote: string): GuardResul
 }
 
 export const SEMANTIC_VALIDATOR = 'semantic-judge@1';
+const JUDGE_BATCH = 12;
 
 export interface ClaimToJudge {
   id: string;
@@ -154,25 +155,31 @@ export async function judgeClaims(
   signal?: AbortSignal,
 ): Promise<{ judgements: Map<string, Judgement>; usage: LlmUsage }> {
   const judgements = new Map<string, Judgement>();
-  if (items.length === 0) return { judgements, usage: { promptTokens: 0, completionTokens: 0 } };
-  const ids = new Set(items.map((item) => item.id));
-  const result = await completeStructured(llm, buildJudgeMessages(items), JudgeSchema, {
-    maxTokens: 120 + items.length * 80,
-    signal,
-    check: (value) => {
-      const seen = new Set(value.verdicts.map((v) => v.id));
-      const missing = [...ids].filter((id) => !seen.has(id));
-      return missing.length ? [`Return a verdict for every id; missing: ${missing.join(', ')}`] : [];
-    },
-  });
-  for (const v of result.value.verdicts) {
-    if (!ids.has(v.id) || judgements.has(v.id)) continue;
-    judgements.set(v.id, v.verdict === 'uncertain'
-      ? { verdict: 'insufficient_evidence', reason: `uncertain: ${v.reason || 'the auditor could not decide'}` }
-      : { verdict: v.verdict, reason: v.reason || v.verdict.replace('_', ' ') });
+  const usage: LlmUsage = { promptTokens: 0, completionTokens: 0 };
+  // Small batches: models skip ids in long lists, and a skipped id would be dropped.
+  for (let start = 0; start < items.length; start += JUDGE_BATCH) {
+    const batch = items.slice(start, start + JUDGE_BATCH);
+    const ids = new Set(batch.map((item) => item.id));
+    const result = await completeStructured(llm, buildJudgeMessages(batch), JudgeSchema, {
+      maxTokens: 120 + batch.length * 80,
+      signal,
+      check: (value) => {
+        const seen = new Set(value.verdicts.map((v) => v.id));
+        const missing = [...ids].filter((id) => !seen.has(id));
+        return missing.length ? [`Return a verdict for every id; missing: ${missing.join(', ')}`] : [];
+      },
+    });
+    usage.promptTokens += result.usage.promptTokens;
+    usage.completionTokens += result.usage.completionTokens;
+    for (const v of result.value.verdicts) {
+      if (!ids.has(v.id) || judgements.has(v.id)) continue;
+      judgements.set(v.id, v.verdict === 'uncertain'
+        ? { verdict: 'insufficient_evidence', reason: `uncertain: ${v.reason || 'the auditor could not decide'}` }
+        : { verdict: v.verdict, reason: v.reason || v.verdict.replace('_', ' ') });
+    }
+    for (const id of ids) {
+      if (!judgements.has(id)) judgements.set(id, { verdict: 'insufficient_evidence', reason: 'the auditor returned no verdict' });
+    }
   }
-  for (const id of ids) {
-    if (!judgements.has(id)) judgements.set(id, { verdict: 'insufficient_evidence', reason: 'the auditor returned no verdict' });
-  }
-  return { judgements, usage: result.usage };
+  return { judgements, usage };
 }
