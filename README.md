@@ -94,7 +94,9 @@ flowchart LR
     C --> D["LLM: propose facts<br/>with verbatim quotes"]
     D --> E{"Quote found in<br/>fetched text?"}
     E -- "no" --> X["Drop the claim"]
-    E -- "yes" --> F["Verified facts"]
+    E -- "yes" --> R{"Claim consistent<br/>with its quote?<br/>rules, then LLM audit"}
+    R -- "contradicted or<br/>not supported" --> X
+    R -- "supported" --> F["Verified facts"]
     F --> G["LLM: draft 3 emails<br/>from verified facts only"]
     G --> H{"Rules pass?<br/>no links, no placeholders,<br/>cites a real fact"}
     H -- "no, once" --> G
@@ -105,9 +107,10 @@ flowchart LR
 2. **Extract.** Scripts, styles, navigation, footers and forms are stripped; headings and lists are kept. The text is trimmed to about 9,000 characters across pages so a run fits comfortably inside free-tier token limits.
 3. **Research.** The model returns a company profile, facts (each with a category, a one-line claim, an exact quote and the source page) and hypotheses that cite fact ids. The output is validated against a schema; malformed output gets one repair attempt.
 4. **Verify.** Each quote is normalised (case, curly quotes, dashes, whitespace) and must appear on a fetched page, with every fragment in order if the model used an ellipsis. Unverified facts are dropped, hypotheses that relied only on dropped facts go with them, and a fact credited to the wrong page is re-attributed to the page it's really on.
-5. **Draft.** The email prompt contains only verified facts. Each draft must cite at least one real fact id, stay within length limits, and contain no URLs or placeholders. Drafts that break a rule get one repair attempt; any that still fail are discarded and reported.
+5. **Audit the claims.** A real quote can still be paired with a claim it doesn't support ("We don't serve enterprise teams" → "Serves enterprise teams"). Deterministic rules first reject clear reversals: flipped negation, scope beyond an "only", and numbers past a stated limit. One more model call, in batches of up to 12, then judges every remaining claim against its own quote as `supported`, `contradicted`, `insufficient_evidence` or `uncertain`. Only `supported` claims are kept. Everything else is dropped with its quote, source URL, verdict, validator and reason, and a failed audit call fails the run rather than letting claims through unchecked.
+6. **Draft.** The email prompt contains only the company name and verified facts; the model's own company summary is never sent to it. Each draft must cite at least one real fact id, stay within length limits, and contain no URLs or placeholders. Drafts that break a rule get one repair attempt; any that still fail are discarded and reported.
 
-A run makes **two model calls** (plus at most one repair each) and typically uses around 7,000 tokens. The web app logs the real number for every run.
+A run makes **three model calls** (research, claim audit and drafting, plus at most one repair each) and typically uses around 7,000 to 8,000 tokens. The audit is one small call whose size grows with the number of claims; the web app logs the real number for every run.
 
 ## 💻 Using the CLI
 
@@ -277,7 +280,7 @@ Details and reporting: [SECURITY.md](SECURITY.md).
 
 Being explicit about these is part of the design:
 
-- **Verification proves the quote exists, not that the claim is faithful.** The model writes a one-line claim next to each quote; read the quote, and read every draft before sending.
+- **The claim audit is a model judgement, not proof.** It fails closed, so its usual error is dropping a fact that was fine. On the 36 labeled cases in `test/fixtures/claim-evidence.json` it accepted none of the 23 unsupported claims and rejected 0 to 2 of the 13 supported ones across runs with Claude Code. That's a small set, not a reliability guarantee: read each quote, and every draft, before sending. The company one-liner shown in the brief is the model's summary and isn't audited.
 - **The website, plus any profile files you give, is the only source.** No news or funding data. That's deliberate for v1: those sources can't be verified the same way for free. See the roadmap.
 - **JavaScript-only sites** that render nothing server-side return "not enough readable text". IrisVeil doesn't run a browser.
 - **Some sites block bots** and return 403s. IrisVeil identifies itself honestly as `IrisVeilBot` rather than impersonating a browser.
@@ -295,6 +298,7 @@ Being explicit about these is part of the design:
 | `answered with HTTP 403` / `refused the connection` | The site blocks automated requests. Try another page or site. |
 | `could not find that model` | `LLM_MODEL` isn't available to your key. Check the provider's model list. |
 | `used up its output budget` | A reasoning model spent its tokens thinking. Set `LLM_REASONING_EFFORT=low`. |
+| `IrisVeil found quotes on that website but could not confirm they support any claim` | The audit rejected every claim. Run again or try a larger model; the dropped list shows each verdict. |
 | `IrisVeil could not verify any facts` | The model paraphrased instead of quoting. Run again; if it repeats, try a larger model. |
 | Deployed page takes a minute to load | The free Render instance was asleep. It wakes on the first request. |
 
@@ -310,6 +314,7 @@ irisveil/
 │   ├── extract.ts      # HTML → text, metadata and link scoring
 │   ├── profiles.ts     # LinkedIn PDF and X Markdown profile files
 │   ├── research.ts     # Research prompt, schema and quote verification
+│   ├── consistency.ts  # Claim–evidence rules and the model claim audit
 │   ├── outreach.ts     # Drafting prompt, email rules and filtering
 │   ├── llm.ts          # OpenAI-compatible client, retries, JSON repair
 │   ├── local-agent.ts  # Claude Code, Codex, Antigravity and Grok CLIs as the model
@@ -346,10 +351,10 @@ The suite (Node's built-in runner, no network, no API key) covers the IP blockli
 ## 🧭 Design decisions
 
 - **Website-grounded research instead of web search.** Every fact can be checked deterministically against text IrisVeil fetched itself, for free. Search APIs add cost, keys and sources that can't be verified the same way. Revisit when there's a free search source whose snippets can go through the same verification.
-- **Quote verification in code, not model self-checking.** A second model pass can also hallucinate; a substring check can't. It costs nothing and makes failures visible ("1 dropped").
+- **Quote verification in code, then a fail-closed claim audit.** A substring check can't hallucinate, so provenance stays in code. Whether a quote *supports* its claim needs language understanding, so a constrained model audit runs after cheap rules, and anything it can't confirm is dropped. Run `npx tsx eval/claims.ts --claude` to measure false acceptance and false rejection on the labeled fixtures.
 - **One OpenAI-compatible client on `fetch`, no SDK.** One code path covers Groq, Gemini, OpenRouter, Ollama and OpenAI, with two runtime dependencies: `zod` for validation and `unpdf` for LinkedIn PDFs.
 - **No web framework, no database.** Five routes and in-memory limits fit a single free instance. Move limits to Redis if you ever run more than one instance.
-- **Two model calls per run.** Separating research from drafting is what lets drafting see only verified facts. It's also the smallest number that keeps a run inside free-tier per-minute limits.
+- **Three model calls per run.** Separating research from drafting is what lets drafting see only verified facts, and a separate audit call keeps the judge independent of the model that wrote the claims. The audit is batched and small so a run still fits free-tier per-minute limits.
 
 ## 🗺️ Roadmap
 
