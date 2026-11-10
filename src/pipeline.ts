@@ -149,7 +149,7 @@ export function resolveSender(input: RunInput, config: IrisVeilConfig): SenderPr
   };
 }
 
-/** Fetch → research → verify → draft. One run makes two LLM calls (plus at most one repair each). */
+/** Fetch → research → verify → draft. One run makes three LLM calls: research, claim audit and drafting (plus at most one repair each). */
 export async function runIrisVeil(input: RunInput, deps: RunDeps): Promise<IrisVeilResult> {
   const { config, llm } = deps;
   const startedAt = Date.now();

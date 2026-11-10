@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { runIrisVeil, parseRunInput, type ProgressEvent } from '../src/pipeline.js';
 import { createLlmClient } from '../src/llm.js';
 import { IrisVeilError } from '../src/errors.js';
-import { SITE_PAGES, completion, outreachReply, researchReply, startFakeLlm, startSite, testConfig, type ChatRequestBody, type FakeLlm } from './helpers.js';
+import { SITE_PAGES, completion, isJudge, judgeReply, outreachReply, researchReply, startFakeLlm, startSite, testConfig, type ChatRequestBody, type FakeLlm } from './helpers.js';
 
 /**
  * End to end through real HTTP: fixture website → SSRF-guarded fetcher → extractor →
@@ -18,7 +18,7 @@ describe('runIrisVeil end to end', () => {
 
   before(async () => {
     site = await startSite(SITE_PAGES);
-    llm = await startFakeLlm((body) => ({ json: completion(isResearch(body) ? researchReply(site.origin) : outreachReply()) }));
+    llm = await startFakeLlm((body) => ({ json: completion(isJudge(body) ? judgeReply(body) : isResearch(body) ? researchReply(site.origin) : outreachReply()) }));
   });
   after(async () => {
     await site.close();
@@ -54,7 +54,7 @@ describe('runIrisVeil end to end', () => {
     assert.equal(result.dropped.length, 1, 'the invented Series B claim is dropped');
     assert.equal(result.emails.length, 3);
     assert.deepEqual(result.emails[2]!.basedOn, ['s4'], 'unknown fact ids are filtered out');
-    assert.equal(result.stats.promptTokens, 2400);
+    assert.equal(result.stats.promptTokens, 3600, 'research, claim audit and drafting calls');
     assert.deepEqual(
       progress.map((p) => p.stage),
       ['fetch', 'fetch', 'research', 'verify', 'draft', 'done'],
@@ -110,6 +110,7 @@ describe('prompt injection from the website', () => {
     let outreachCalls = 0;
     // A model that "obeys" the injected instruction every time.
     const llm = await startFakeLlm((body) => {
+      if (isJudge(body)) return { json: completion(judgeReply(body)) };
       if (isResearch(body)) return { json: completion(researchReply(site.origin)) };
       outreachCalls += 1;
       return { json: completion(outreachReply({ injectLink: true })) };
@@ -125,6 +126,36 @@ describe('prompt injection from the website', () => {
       assert.equal(result.emails.length, 2, 'the email with the injected link is discarded');
       assert.ok(result.emails.every((e) => !/evil\.example/.test(e.body)));
       assert.match(result.warnings.join(' '), /discarded/);
+    } finally {
+      await site.close();
+      await llm.close();
+    }
+  });
+});
+
+describe('claim audit', () => {
+  it('keeps claims the auditor does not support out of the brief and the drafts', async () => {
+    const site = await startSite(SITE_PAGES);
+    let draftPrompt = '';
+    const llm = await startFakeLlm((body) => {
+      if (isJudge(body)) {
+        const first = (JSON.parse(body.messages[1]!.content) as Array<{ id: string }>)[0]!.id;
+        return { json: completion(judgeReply(body, { [first]: 'contradicted' })) };
+      }
+      if (isResearch(body)) return { json: completion(researchReply(site.origin)) };
+      draftPrompt = body.messages[1]!.content;
+      return { json: completion(outreachReply()) };
+    });
+    try {
+      const config = testConfig(llm.url);
+      const result = await runIrisVeil(parseRunInput({ url: `${site.origin}/` }), { config, llm: createLlmClient(config.llm) });
+      const rejected = result.dropped.find((d) => d.verdict === 'contradicted');
+      assert.ok(rejected, 'the contradicted claim is recorded with its verdict');
+      assert.equal(rejected.validator, 'semantic-judge@1');
+      assert.ok(rejected.sourceUrl && rejected.quote);
+      assert.ok(!result.signals.some((s) => s.claim === rejected.claim));
+      assert.ok(!draftPrompt.includes(rejected.claim), 'the drafting prompt never sees it');
+      assert.ok(result.emails.every((e) => e.basedOn.every((id) => result.signals.some((s) => s.id === id))));
     } finally {
       await site.close();
       await llm.close();
