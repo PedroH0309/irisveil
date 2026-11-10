@@ -76,7 +76,8 @@ export function renderTerminal(result: IrisVeilResult, options: { depth: ColorDe
   out.push('');
   for (const signal of result.signals) {
     out.push(`  ${s.fg(BRAND.mint, '✓')} ${s.fg(BRAND.glint, signal.id.padEnd(3))} ${s.dim(signal.category.padEnd(11))} ${t(signal.claim)}`);
-    out.push(s.italic(s.dim(wrapText(`“${t(signal.quote)}” — ${shortUrl(signal.sourceUrl)}`, width - 8, '                    '))));
+    const reported = signal.sourceType === 'third_party' ? ' (third-party report)' : '';
+    out.push(s.italic(s.dim(wrapText(`“${t(signal.quote)}” — ${shortUrl(signal.sourceUrl)}${reported}`, width - 8, '                    '))));
   }
   if (result.dropped.length) {
     out.push(`  ${s.fg(BRAND.coral, '✗')} ${s.italic(s.fg(BRAND.coral, `${result.dropped.length} claim(s) dropped: quote missing or contradicted`))}`);
@@ -130,7 +131,7 @@ export function renderMarkdown(result: IrisVeilResult): string {
   lines.push('');
   for (const s of result.signals) {
     lines.push(`- **${s.id} · ${s.category}:** ${s.claim}  `);
-    lines.push(`  “${s.quote}” ([source](${s.sourceUrl}))`);
+    lines.push(`  “${s.quote}” ([${s.sourceType === 'third_party' ? 'third-party report' : 'source'}](${s.sourceUrl}))`);
   }
   if (result.hypotheses.length) {
     lines.push('');

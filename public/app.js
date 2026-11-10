@@ -16,6 +16,7 @@
   const senderEmailInput = $('sender-email');
   const senderWebsiteInput = $('sender-website');
   const linkedinInput = $('linkedin');
+  const sourcesInput = $('sources');
   const xInput = $('x');
   const submitButton = $('submit');
   const log = $('log');
@@ -134,7 +135,7 @@
       const source = el(
         'p',
         { class: 'source' },
-        signal.category.charAt(0).toUpperCase() + signal.category.slice(1) + ', from ',
+        signal.category.charAt(0).toUpperCase() + signal.category.slice(1) + (signal.sourceType === 'third_party' ? ', reported by a third party at ' : ', from '),
         href ? el('a', { href, target: '_blank', rel: 'noopener noreferrer nofollow', text: shortUrl(href) }) : shortUrl(signal.sourceUrl),
       );
       facts.append(
@@ -389,6 +390,7 @@
           senderWebsite: senderWebsiteInput.value.trim(),
           linkedin: linkedin || undefined,
           x: x || undefined,
+          sources: sourcesInput.value.split(/\s+/).map((s) => s.trim()).filter(Boolean),
         }),
       });
 
