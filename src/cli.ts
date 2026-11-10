@@ -26,6 +26,8 @@ Options
   -o, --offer <text>        What you sell (defaults to SENDER_OFFER in .env)
       --linkedin <file>     Path to the recipient's LinkedIn PDF (profile → More → Save to PDF)
       --x <file>            Path to a Markdown export of the recipient's X profile, made with Grok
+      --source <url>        Opt in to a third-party page (news, press release); repeat up to 3 times.
+                            Its facts are labelled as reported by that site, never as the company's
       --out <file>          Also save the result (.md for Markdown, .json for JSON)
       --json                Print the full result as JSON instead of the formatted view
   -q, --quiet               Hide progress messages
@@ -43,6 +45,7 @@ Examples
   irisveil https://posthog.com --to "Cristina Cordova, Chief Operating Officer" --out posthog.md
   irisveil linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf
   irisveil linear.app --to "Cristina Cordova" --x ~/Downloads/cjc.md
+  irisveil linear.app --source https://news.example/linear-launch
   irisveil linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md
   irisveil linear.app --to "Cristina Cordova" --linkedin ~/Downloads/Profile.pdf --x ~/Downloads/cjc.md --claude
   irisveil serve --port 8080
@@ -92,6 +95,7 @@ async function main(argv: string[]): Promise<number> {
         offer: { type: 'string', short: 'o' },
         linkedin: { type: 'string' },
         x: { type: 'string' },
+        source: { type: 'string', multiple: true },
         out: { type: 'string' },
         json: { type: 'boolean' },
         quiet: { type: 'boolean', short: 'q' },
@@ -153,7 +157,7 @@ async function main(argv: string[]): Promise<number> {
   let input;
   try {
     const [linkedin, x] = await Promise.all([readProfileArg(values.linkedin, 'LinkedIn PDF'), readProfileArg(values.x, 'X Markdown file')]);
-    input = parseRunInput({ url: command, recipient: values.to, offer: values.offer, linkedin, x });
+    input = parseRunInput({ url: command, recipient: values.to, offer: values.offer, linkedin, x, sources: values.source });
   } catch (error) {
     printError(error);
     return EXIT.usage;
