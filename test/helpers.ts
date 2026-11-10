@@ -239,3 +239,12 @@ export function outreachReply(options: { injectLink?: boolean } = {}) {
     ],
   };
 }
+
+/** True for the claim auditor's request. */
+export const isJudge = (body: ChatRequestBody) => body.messages[0]!.content.includes('claim auditor');
+
+/** Auditor reply; supports every claim unless `verdicts` overrides an id. */
+export function judgeReply(body: ChatRequestBody, verdicts: Record<string, string> = {}) {
+  const items = JSON.parse(body.messages[1]!.content) as Array<{ id: string }>;
+  return { verdicts: items.map(({ id }) => ({ id, verdict: verdicts[id] ?? 'supported', reason: 'test' })) };
+}

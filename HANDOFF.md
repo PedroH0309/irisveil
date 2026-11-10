@@ -1,42 +1,36 @@
 # Session handoff
 
-Read this first in every new session; rewrite it at the end of a session when asked for a handoff.
+Read this first in every new session; rewrite it when asked for a handoff.
 
-Last updated: 2026-11-10
+Last updated: 2026-11-11
 
 ## Goal right now
 
-Polish IrisVeil (formerly Iris), a CLI and web app that drafts cold emails from verified website facts, as an open-source project the owner will later also sell as a hosted service.
-Constraints: one atomic Conventional Commit per change, trailer `Co-Authored-By: Claude Code <noreply@anthropic.com>` (checked in CI by `.github/scripts/lint-commit.py`); push only when the user says so; the local `.env` is the user's: edit it only when they ask.
-Licensing: AGPL-3.0-only plus a CLA ([CLA.md](CLA.md)). The domain irisveil.ai must not be mentioned anywhere yet.
+Complete [issue #9](https://github.com/YourAKShaw/irisveil/issues/9): prevent unsupported or contradictory claims from reaching verified research and outreach. The user asked for the first of two issues to be fixed end to end and linked in a PR; issue #10 is not yet in scope.
+
+Use atomic Conventional Commits with the existing trailer `Co-Authored-By: Claude Code <noreply@anthropic.com>`. Use branches named `YourAKShaw/<type>/<brief-description>`. Push only when the user authorizes it; the request to create the issue PR authorized pushing its branch. Edit the user's `.env` only on request. Do not mention the reserved domain in project content. Licensing is AGPL-3.0-only plus [CLA](CLA.md).
 
 ## Where things stand
 
-- Branch: `main`, remote `origin` = `git@github.com:YourAKShaw/irisveil.git` (repo renamed from `iris`; the local folder is still `iris`).
-- Done this session: README and SECURITY moved to the root; CI pins actions and checks commits; AGPL relicense; CLA Assistant Lite (`.github/workflows/cla.yml`, signatures branch `cla-signatures` already on GitHub); AGPL source link in the web footer (`IRISVEIL_SOURCE_URL`); full Iris → IrisVeil rebrand; new screenshot; `--claude/--codex/--antigravity/--grok` local-CLI flags ([src/local-agent.ts](src/local-agent.ts)); LinkedIn PDF and X Markdown profile files ([src/profiles.ts](src/profiles.ts)).
-- Wiki is live at github.com/YourAKShaw/irisveil/wiki (separate repo `irisveil.wiki.git`, already pushed).
-- Earlier rebrand/AGPL commits are pushed. This session (2026-11-10) added sender signature details: `SENDER_ROLE`, `SENDER_ADDRESS`, `SENDER_MOBILE`, `SENDER_EMAIL`, `SENDER_WEBSITE` ([src/config.ts](src/config.ts)), `formatSignature` in [src/outreach.ts](src/outreach.ts) (`Name | Role` / company / address / `Mobile: …` / `email | website`, empty parts skipped), `resolveSender` in [src/pipeline.ts](src/pipeline.ts), matching web form fields in that order, `.env.example` and README.
-- The user asked for those keys in their `.env` too; they were added blank there (not committed).
-- Unpushed: 4 commits (`git log origin/main..HEAD`).
-- Checks: `npm run check` → 152 pass, lint clean. The new form was not checked in a browser.
+- Branch: `YourAKShaw/fix/9-claim-evidence-consistency`, tracking the matching origin branch. [Draft PR #11](https://github.com/YourAKShaw/irisveil/pull/11) links #9 and is **not ready to merge**.
+- Commit `0b7f812` adds a characterization in [test/research.test.ts](test/research.test.ts): a genuine quote denying enterprise service is accepted with the opposite claim. The test records the bug and must be inverted when fixed. No production fix exists yet.
+- `npm run check` passed (153 tests); `npm run build` passed. No live provider or website evaluation was run. This handoff commit has not been pushed.
+- `main` matched `origin/main` after fetching this session. The earlier handoff's four unpushed main commits are no longer outstanding.
 
 ## Next steps
 
-1. Ask the user to push `main`, then confirm CI (`ci.yml` and the commit-lint job) passes on GitHub. Check the new sender fields in the web form (restart `irisveil serve`, hard-reload); consider a wiki note on the signature variables.
-2. If the user deploys on Render: the Blueprint service name changed to `irisveil` ([render.yaml](render.yaml)); check the existing service still builds.
-3. Make profile research reliable on API providers: give each profile its own small extraction call instead of sharing the company research prompt ([src/research.ts](src/research.ts) `researchCompany`). Also make quote matching tolerate Markdown `**` and PDF line-break hyphens (`normalizeForMatch`). Test with the user's files in `~/Downloads/iris-test/`. It already works well with `--claude`.
-4. Later, on request: a private repo for the paid hosted version (accounts, payment gateway). The open repo stays self-hostable.
+1. Read issue #9 and its implementation-direction comment, then implement and evaluate fail-closed claim–evidence validation in [src/research.ts](src/research.ts), including source URL, quote, verdict, validator path and rejection reason in the audit trail. Cover company and imported profile facts and the issue's adversarial fixtures; assess false acceptance and false rejection rather than relying on negation matching alone.
+2. Inspect [src/outreach.ts](src/outreach.ts): the drafting prompt also receives independently generated company summary fields. Ensure unsupported claims cannot reach drafts through that path. Test the entire pipeline and error/uncertainty handling, then update documentation and PR #11 with observed results and limitations.
+3. Check the sender fields in the web form after restarting `irisveil serve` and hard-reloading. If deploying on Render, check the renamed service in [render.yaml](render.yaml).
+4. Separately, improve profile extraction reliability in `researchCompany` and quote matching for Markdown emphasis and PDF line-break hyphens; test with the user's local profile fixtures when appropriate. This was an earlier outstanding task, not necessarily part of #9.
 
 ## Open questions
 
-- A lawyer should review [CLA.md](CLA.md) (it's an adapted draft) before commercial launch.
-- Optional `--gemini` flag: the Gemini CLI fails on this account until `GOOGLE_CLOUD_PROJECT` is set. Not requested.
+- A lawyer should review [CLA.md](CLA.md) before commercial launch.
+- Optional Gemini CLI support remains unrequested; that account previously needed `GOOGLE_CLOUD_PROJECT`.
 
 ## Gotchas
 
-- Groq's free tier is 8K tokens/min; a run with both profile files can hit it. `gemini-3.8-flash` hung on the user's key. `--claude` is the reliable path.
-- `irisveil serve` caches static assets at startup: restart the server after editing `public/`, and hard-reload the browser.
-- `pkill -f`/`pgrep -f` patterns can match your own shell's command line and kill it; kill by PID instead.
-- LinkedIn and X block anonymous fetches (sign-in redirect loops); that's why profiles are files. Don't try to scrape them.
-- The `gh` CLI has no wiki commands: clone `git@github.com:YourAKShaw/irisveil.wiki.git`, edit, commit, push. Quote Mermaid labels or GitHub won't render them.
-- The user's `.env` still sets the sender company to NayaManas; it shows up in live drafts.
+- Groq's free tier can hit its token limit with both profile files; local `--claude` previously worked reliably. An additional semantic model call has latency and cost implications.
+- `irisveil serve` caches static assets at startup. LinkedIn and X block anonymous fetches; profiles are supplied as files.
+- The sandbox failed to initialize its network namespace in this session; commands worked with escalation. Do not expose local secrets in logs or PRs.

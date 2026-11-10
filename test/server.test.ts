@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { IncomingMessage } from 'node:http';
 import { createIrisVeilServer, clientIp, silentLogger, type IrisVeilServer } from '../src/server.js';
 import { createLlmClient } from '../src/llm.js';
-import { SITE_PAGES, completion, outreachReply, researchReply, startFakeLlm, startSite, testConfig, type FakeLlm } from './helpers.js';
+import { SITE_PAGES, completion, isJudge, judgeReply, outreachReply, researchReply, startFakeLlm, startSite, testConfig, type FakeLlm } from './helpers.js';
 
 interface Event {
   type: string;
@@ -27,7 +27,7 @@ describe('HTTP server', () => {
   before(async () => {
     site = await startSite(SITE_PAGES);
     llm = await startFakeLlm((body) => ({
-      json: completion(body.messages[0]!.content.includes('research analyst') ? researchReply(site.origin) : outreachReply()),
+      json: completion(isJudge(body) ? judgeReply(body) : body.messages[0]!.content.includes('research analyst') ? researchReply(site.origin) : outreachReply()),
     }));
     const config = testConfig(llm.url, { RATE_LIMIT_PER_IP: '4', DAILY_RUN_LIMIT: '50' });
     app = await createIrisVeilServer({ config, llm: createLlmClient(config.llm), logger: silentLogger });
@@ -111,7 +111,7 @@ describe('daily budget', () => {
   it('stops new runs once the daily quota is used, and refunds runs that never reached the model', async () => {
     const site = await startSite(SITE_PAGES);
     const llm = await startFakeLlm((body) => ({
-      json: completion(body.messages[0]!.content.includes('research analyst') ? researchReply(site.origin) : outreachReply()),
+      json: completion(isJudge(body) ? judgeReply(body) : body.messages[0]!.content.includes('research analyst') ? researchReply(site.origin) : outreachReply()),
     }));
     const config = testConfig(llm.url, { DAILY_RUN_LIMIT: '1', CACHE_TTL_MINUTES: '0' });
     const app = await createIrisVeilServer({ config, llm: createLlmClient(config.llm), logger: silentLogger });

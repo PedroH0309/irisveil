@@ -3,6 +3,7 @@ import { IrisVeilError } from './errors.js';
 import { completeStructured, type ChatMessage, type LlmClient, type LlmUsage } from './llm.js';
 import type { SenderProfile } from './config.js';
 import type { SourcePage } from './site.js';
+import { DETERMINISTIC_VALIDATOR, SEMANTIC_VALIDATOR, checkClaimAgainstQuote, judgeClaims, type ClaimVerdict, type Judgement } from './consistency.js';
 import { charClass } from './chars.js';
 
 /**
@@ -71,6 +72,8 @@ export interface Signal {
   claim: string;
   quote: string;
   sourceUrl: string;
+  /** Validators that passed this claim, in order. */
+  validatedBy?: string[];
 }
 
 export interface Hypothesis {
@@ -83,6 +86,11 @@ export interface DroppedClaim {
   claim: string;
   quote: string;
   reason: string;
+  /** Page the quote was found on, when provenance passed. */
+  sourceUrl?: string;
+  /** Claim–evidence verdict, when provenance passed and a validator ran. */
+  verdict?: Exclude<ClaimVerdict, 'supported'>;
+  validator?: string;
 }
 
 export interface ResearchBrief {
@@ -214,6 +222,18 @@ export function verifyResearch(draft: ResearchDraft, pages: SourcePage[]): Resea
       continue;
     }
     seenQuotes.add(key);
+    const guard = checkClaimAgainstQuote(signal.claim, signal.quote);
+    if (guard.verdict === 'contradicted') {
+      dropped.push({
+        claim: signal.claim,
+        quote: signal.quote,
+        sourceUrl: match.url,
+        verdict: 'contradicted',
+        validator: DETERMINISTIC_VALIDATOR,
+        reason: guard.reason ?? 'claim contradicts its quote',
+      });
+      continue;
+    }
     const id = `s${signals.length + 1}`;
     if (!idMap.has(signal.id)) idMap.set(signal.id, id);
     signals.push({ id, category: signal.category, claim: signal.claim, quote: signal.quote, sourceUrl: match.url });
@@ -242,6 +262,35 @@ export function verifyResearch(draft: ResearchDraft, pages: SourcePage[]): Resea
   };
 }
 
+/**
+ * Keeps only signals the semantic judge marked supported; everything else moves to `dropped`
+ * with its verdict. Hypotheses lose references to dropped signals. Fails closed when nothing is left.
+ */
+export function applyJudgements(brief: ResearchBrief, judgements: Map<string, Judgement>): ResearchBrief {
+  const signals: Signal[] = [];
+  const dropped = [...brief.dropped];
+  for (const s of brief.signals) {
+    const judgement = judgements.get(s.id) ?? { verdict: 'insufficient_evidence', reason: 'the auditor returned no verdict' };
+    if (judgement.verdict === 'supported') {
+      signals.push({ ...s, validatedBy: [DETERMINISTIC_VALIDATOR, SEMANTIC_VALIDATOR] });
+    } else {
+      dropped.push({ claim: s.claim, quote: s.quote, sourceUrl: s.sourceUrl, verdict: judgement.verdict, validator: SEMANTIC_VALIDATOR, reason: judgement.reason });
+    }
+  }
+  if (signals.length === 0) {
+    throw new IrisVeilError(
+      'INSUFFICIENT_EVIDENCE',
+      'IrisVeil found quotes on that website but could not confirm they support any claim, so it will not draft emails.',
+      { detail: `${dropped.length} proposed signals failed verification` },
+    );
+  }
+  const kept = new Set(signals.map((s) => s.id));
+  const hypotheses = brief.hypotheses
+    .map((h) => ({ ...h, basedOn: h.basedOn.filter((id) => kept.has(id)) }))
+    .filter((h) => h.basedOn.length > 0);
+  return { ...brief, signals, hypotheses, dropped };
+}
+
 export async function researchCompany(
   llm: LlmClient,
   pages: SourcePage[],
@@ -261,12 +310,18 @@ export async function researchCompany(
         .map((page) => `Extract 1 to 3 person facts from the RECIPIENT PROFILE ${page.url}, each with a verbatim quote from it and sourceUrl "${page.url}".`);
     },
   });
-  const brief = verifyResearch(result.value, [...pages, ...profiles]);
+  const verified = verifyResearch(result.value, [...pages, ...profiles]);
+  const judged = await judgeClaims(llm, verified.signals.map(({ id, claim, quote }) => ({ id, claim, quote })), signal);
+  const brief = applyJudgements(verified, judged.judgements);
+  const usage = {
+    promptTokens: result.usage.promptTokens + judged.usage.promptTokens,
+    completionTokens: result.usage.completionTokens + judged.usage.completionTokens,
+  };
   // The category follows where the quote was found, not what the model labelled it.
   const profileUrls = new Set(profiles.map((page) => page.url));
   for (const s of brief.signals) {
     if (profileUrls.has(s.sourceUrl)) s.category = 'person';
     else if (s.category === 'person') s.category = 'team';
   }
-  return { brief, usage: result.usage };
+  return { brief, usage };
 }

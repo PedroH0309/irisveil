@@ -79,7 +79,7 @@ export function renderTerminal(result: IrisVeilResult, options: { depth: ColorDe
     out.push(s.italic(s.dim(wrapText(`“${t(signal.quote)}” — ${shortUrl(signal.sourceUrl)}`, width - 8, '                    '))));
   }
   if (result.dropped.length) {
-    out.push(`  ${s.fg(BRAND.coral, '✗')} ${s.italic(s.fg(BRAND.coral, `${result.dropped.length} claim(s) dropped: quote not found on the site`))}`);
+    out.push(`  ${s.fg(BRAND.coral, '✗')} ${s.italic(s.fg(BRAND.coral, `${result.dropped.length} claim(s) dropped: quote missing or contradicted`))}`);
   }
   out.push('');
 

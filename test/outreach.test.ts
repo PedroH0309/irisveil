@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEmail, checkMix, factMix, formatEmailBody, formatSignature, personFactsUsed, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
+import { buildOutreachMessages, checkEmail, checkMix, factMix, formatEmailBody, formatSignature, personFactsUsed, mentionsFactIds, parseRecipient, stripFactIds, wordCount } from '../src/outreach.js';
 
 const ids = new Set(['s1', 's2']);
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
@@ -132,5 +132,21 @@ describe('company and person facts in every draft', () => {
     const mix = factMix({ signals: [company, linkedin, x] });
     assert.deepEqual([...mix.profiles.keys()].sort(), ['LinkedIn', 'X']);
     assert.deepEqual(personFactsUsed(draft(['s1', 's2', 's3'], 'Your posts on operating cadence resonated.'), mix), ['s3']);
+  });
+});
+
+describe('buildOutreachMessages', () => {
+  it('sends only audited facts, never the unchecked company summary', () => {
+    const brief = {
+      company: { name: 'Acme', oneLiner: 'Serves enterprise teams worldwide.', offering: 'Unlimited integrations.', audience: 'Fortune 500.' },
+      signals: [{ id: 's1', category: 'product' as const, claim: 'Ships weekly.', quote: 'We ship every week.', sourceUrl: 'u' }],
+      hypotheses: [],
+      dropped: [{ claim: 'Serves enterprise teams.', quote: "We don't serve enterprise teams.", reason: 'contradicted' }],
+      proposedSignals: 2,
+    };
+    const sender = { name: 'S', role: '', company: 'Co', offer: 'help', address: '', mobile: '', email: '', website: '' };
+    const user = buildOutreachMessages(brief, sender as never, parseRecipient(undefined))[1]!.content;
+    assert.match(user, /Ships weekly/);
+    for (const unchecked of ['enterprise', 'Unlimited', 'Fortune']) assert.ok(!user.includes(unchecked), unchecked);
   });
 });
