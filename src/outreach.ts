@@ -292,8 +292,10 @@ Respond with one JSON object only: {"emails":[{"angle":"","subject":"","body":""
     ? brief.hypotheses.map((h) => `- ${h.statement} (based on ${h.basedOn.join(', ')}; confidence ${h.confidence})`).join('\n')
     : '- none';
 
-  const user = `COMPANY: ${company} — ${brief.company.oneLiner}
-${brief.company.offering ? `OFFERING: ${brief.company.offering}\n` : ''}${brief.company.audience ? `AUDIENCE: ${brief.company.audience}\n` : ''}
+  // The company one-liner, offering and audience are the model's own summary, never checked
+  // against a quote, so they stay out of the drafting prompt: only audited facts reach emails.
+  const user = `COMPANY: ${company}
+
 VERIFIED FACTS:
 ${facts}
 
