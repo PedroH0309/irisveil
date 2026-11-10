@@ -1,4 +1,5 @@
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { DETERMINISTIC_VALIDATOR, SEMANTIC_VALIDATOR, checkClaimAgainstQuote, judgeClaims } from '../src/consistency.js';
 import { applyJudgements, type ResearchBrief } from '../src/research.js';
@@ -100,5 +101,19 @@ describe('applyJudgements', () => {
 
   it('refuses to continue when no claim is supported', () => {
     assert.throws(() => applyJudgements(brief, new Map()), (e: unknown) => e instanceof IrisVeilError && e.code === 'INSUFFICIENT_EVIDENCE');
+  });
+});
+
+describe('labeled claim–evidence fixtures', () => {
+  const cases = JSON.parse(readFileSync(new URL('./fixtures/claim-evidence.json', import.meta.url), 'utf8')) as Array<{ quote: string; claim: string; label: string }>;
+
+  it('deterministic guards never reject a supported claim', () => {
+    const rejected = cases.filter((c) => c.label === 'supported' && checkClaimAgainstQuote(c.claim, c.quote).verdict === 'contradicted');
+    assert.deepEqual(rejected, []);
+  });
+
+  it('deterministic guards only call contradictions on contradicted fixtures', () => {
+    const wrong = cases.filter((c) => c.label !== 'contradicted' && checkClaimAgainstQuote(c.claim, c.quote).verdict === 'contradicted');
+    assert.deepEqual(wrong, []);
   });
 });
