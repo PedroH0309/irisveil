@@ -3,7 +3,7 @@ import { IrisVeilError } from './errors.js';
 import { completeStructured, type ChatMessage, type LlmClient, type LlmUsage } from './llm.js';
 import type { SenderProfile } from './config.js';
 import type { SourcePage, SourceType } from './site.js';
-import { DETERMINISTIC_VALIDATOR, SEMANTIC_VALIDATOR, checkClaimAgainstQuote, judgeClaims, type ClaimVerdict, type Judgement } from './consistency.js';
+import { CONFLICT_VALIDATOR, DETERMINISTIC_VALIDATOR, overlap, SEMANTIC_VALIDATOR, checkClaimAgainstQuote, judgeClaims, type ClaimVerdict, type Judgement } from './consistency.js';
 import { charClass } from './chars.js';
 
 /**
@@ -92,7 +92,7 @@ export interface DroppedClaim {
   /** Page the quote was found on, when provenance passed. */
   sourceUrl?: string;
   /** Claim–evidence verdict, when provenance passed and a validator ran. */
-  verdict?: Exclude<ClaimVerdict, 'supported'>;
+  verdict?: Exclude<ClaimVerdict, 'supported'> | 'conflict';
   validator?: string;
 }
 
@@ -128,7 +128,11 @@ export function buildResearchMessages(pages: SourcePage[], sender: SenderProfile
   const content = [...pages, ...profiles]
     .map((page) =>
       [
-        profileUrls.has(page.url) ? `=== RECIPIENT PROFILE: ${page.url} ===` : `=== PAGE: ${page.url} ===`,
+        profileUrls.has(page.url)
+          ? `=== RECIPIENT PROFILE: ${page.url} ===`
+          : page.sourceType === 'third_party'
+            ? `=== THIRD-PARTY SOURCE (not the company's site): ${page.url} ===`
+            : `=== PAGE: ${page.url} ===`,
         page.title ? `TITLE: ${neutralise(page.title)}` : '',
         page.description ? `DESCRIPTION: ${neutralise(page.description)}` : '',
         neutralise(page.text),
@@ -144,13 +148,16 @@ export function buildResearchMessages(pages: SourcePage[], sender: SenderProfile
       role: 'user',
       content: `The research is for outreach from ${sender.company}, which offers: "${sender.offer}"
 Use that only to judge which facts matter. Do not mention ${sender.company} in signals.
-
+${pages.some((page) => page.sourceType === 'third_party') ? `${THIRD_PARTY_RULE}
+` : ''}
 <website_content>
 ${content}
 </website_content>`,
     },
   ];
 }
+
+const THIRD_PARTY_RULE = `Pages marked THIRD-PARTY SOURCE were written by someone other than the company. You may take 0 to 3 signals from each, but write the claim as reported by that source (for example "TechWire reports that ..."), never as something the company said, and use that page's URL as sourceUrl. Only use them if they are clearly about this company.`;
 
 const QUOTE_CHARS: Array<[RegExp, string]> = [
   [charClass([0x2018, 0x2019, 0x201a, 0x201b, 0x2032, 0x60, 0xb4]), "'"], // single quotes and primes
@@ -297,6 +304,46 @@ export function applyJudgements(brief: ResearchBrief, judgements: Map<string, Ju
   return { ...brief, signals, hypotheses, dropped };
 }
 
+/**
+ * A third-party report and the company's own site can disagree. When rules find a contradiction
+ * between a third-party signal and a company-site signal, both are withheld rather than either
+ * being promoted to an unquestioned fact.
+ */
+export function withholdConflicts(brief: ResearchBrief): { brief: ResearchBrief; conflicts: number } {
+  const company = brief.signals.filter((s) => s.sourceType === 'company_site');
+  const reported = brief.signals.filter((s) => s.sourceType === 'third_party');
+  const withheld = new Map<string, string>();
+  for (const t of reported) {
+    for (const c of company) {
+      // Unrelated facts can still trip the number or scope rules, so require shared subject matter.
+      if (Math.max(overlap(t.claim, c.claim), overlap(c.claim, t.claim)) < 0.5) continue;
+      const clash = [checkClaimAgainstQuote(t.claim, c.quote), checkClaimAgainstQuote(c.claim, t.quote)].find((g) => g.verdict === 'contradicted');
+      if (!clash) continue;
+      withheld.set(t.id, `conflicts with the company's site (${c.sourceUrl}): ${clash.reason}`);
+      withheld.set(c.id, `conflicts with a third-party source (${t.sourceUrl}): ${clash.reason}`);
+    }
+  }
+  if (withheld.size === 0) return { brief, conflicts: 0 };
+  const dropped = [...brief.dropped];
+  const signals: Signal[] = [];
+  for (const s of brief.signals) {
+    const reason = withheld.get(s.id);
+    if (!reason) {
+      signals.push(s);
+      continue;
+    }
+    dropped.push({ claim: s.claim, quote: s.quote, sourceUrl: s.sourceUrl, verdict: 'conflict', validator: CONFLICT_VALIDATOR, reason });
+  }
+  if (signals.length === 0) {
+    throw new IrisVeilError('INSUFFICIENT_EVIDENCE', 'The sources contradict each other on every fact IrisVeil found, so it will not draft emails.');
+  }
+  const kept = new Set(signals.map((s) => s.id));
+  const hypotheses = brief.hypotheses
+    .map((h) => ({ ...h, basedOn: h.basedOn.filter((id) => kept.has(id)) }))
+    .filter((h) => h.basedOn.length > 0);
+  return { brief: { ...brief, signals, hypotheses, dropped }, conflicts: withheld.size };
+}
+
 export async function researchCompany(
   llm: LlmClient,
   pages: SourcePage[],
@@ -318,7 +365,7 @@ export async function researchCompany(
   });
   const verified = verifyResearch(result.value, [...pages, ...profiles]);
   const judged = await judgeClaims(llm, verified.signals.map(({ id, claim, quote }) => ({ id, claim, quote })), signal);
-  const brief = applyJudgements(verified, judged.judgements);
+  const { brief } = withholdConflicts(applyJudgements(verified, judged.judgements));
   const usage = {
     promptTokens: result.usage.promptTokens + judged.usage.promptTokens,
     completionTokens: result.usage.completionTokens + judged.usage.completionTokens,

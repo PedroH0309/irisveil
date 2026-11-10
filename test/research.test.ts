@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ResearchDraftSchema, normalizeForMatch, quoteAppearsIn, verifyResearch } from '../src/research.js';
+import { ResearchDraftSchema, buildResearchMessages, normalizeForMatch, quoteAppearsIn, verifyResearch, withholdConflicts } from '../src/research.js';
 import { IrisVeilError } from '../src/errors.js';
 import type { SourcePage } from '../src/site.js';
 import { researchReply } from './helpers.js';
@@ -131,5 +131,47 @@ describe('ResearchDraftSchema', () => {
 
   it('rejects a draft without signals', () => {
     assert.equal(ResearchDraftSchema.safeParse({ company: { name: 'A', oneLiner: 'B' }, signals: [] }).success, false);
+  });
+});
+
+describe('third-party sources', () => {
+  const COMPANY = 'https://acme.example/';
+  const WIRE = 'https://techwire.example/acme';
+  const sourcePages: SourcePage[] = [
+    { url: COMPANY, title: 'Acme', description: '', text: "Acme builds warehouse robots. We don't serve enterprise teams today.", sourceType: 'company_site', retrievedAt: 't0' },
+    { url: WIRE, title: 'TechWire', description: '', text: 'Acme now serves enterprise teams, according to people familiar. Acme launched its Atlas robot on Tuesday in Ohio.', sourceType: 'third_party', retrievedAt: 't1' },
+  ];
+  const draft = (signals: Array<{ claim: string; quote: string; sourceUrl: string }>) =>
+    ResearchDraftSchema.parse({ company: { name: 'Acme', oneLiner: 'Robots' }, signals: signals.map((s, i) => ({ id: `s${i + 1}`, category: 'product', ...s })) });
+
+  it('keeps a third-party quote attributed to its own URL even when the model cites the company', () => {
+    const result = verifyResearch(draft([{ claim: 'TechWire reports Acme launched its Atlas robot.', quote: 'Acme launched its Atlas robot on Tuesday in Ohio.', sourceUrl: COMPANY }]), sourcePages);
+    assert.equal(result.signals[0]!.sourceUrl, WIRE);
+    assert.equal(result.signals[0]!.sourceType, 'third_party');
+    assert.equal(result.signals[0]!.retrievedAt, 't1');
+  });
+
+  it('withholds both sides when a third-party report contradicts the company site', () => {
+    const verified = verifyResearch(
+      draft([
+        { claim: 'Does not serve enterprise teams.', quote: "We don't serve enterprise teams today.", sourceUrl: COMPANY },
+        { claim: 'TechWire reports Acme serves enterprise teams.', quote: 'Acme now serves enterprise teams, according to people familiar.', sourceUrl: WIRE },
+        { claim: 'Builds warehouse robots.', quote: 'Acme builds warehouse robots.', sourceUrl: COMPANY },
+      ]),
+      sourcePages,
+    );
+    const { brief, conflicts } = withholdConflicts(verified);
+    assert.equal(conflicts, 2);
+    assert.deepEqual(brief.signals.map((s) => s.claim), ['Builds warehouse robots.']);
+    assert.ok(brief.dropped.every((d) => d.verdict === 'conflict' && /conflicts with/.test(d.reason)));
+  });
+
+  it('labels third-party pages in the research prompt only when they are present', () => {
+    const sender = { name: 'S', role: '', company: 'Co', offer: 'help', address: '', mobile: '', email: '', website: '' };
+    const withWire = buildResearchMessages(sourcePages, sender)[1]!.content;
+    assert.match(withWire, /THIRD-PARTY SOURCE \(not the company's site\): https:\/\/techwire/);
+    assert.match(withWire, /as reported by that source/);
+    const firstPartyOnly = buildResearchMessages([sourcePages[0]!], sender)[1]!.content;
+    assert.doesNotMatch(firstPartyOnly, /THIRD-PARTY/);
   });
 });
