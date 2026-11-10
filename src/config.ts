@@ -90,6 +90,8 @@ export interface FetchConfig {
   maxPages: number;
   maxRedirects: number;
   textBudgetChars: number;
+  /** Shared character budget for all opt-in third-party sources in one run. */
+  externalBudgetChars: number;
 }
 
 export interface ServerConfig {
@@ -277,6 +279,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, options: LoadCo
       maxPages: int('FETCH_MAX_PAGES', 4, 1, 6),
       maxRedirects: 4,
       textBudgetChars: 9_000,
+      externalBudgetChars: int('EXTERNAL_SOURCE_CHARS', 4_000, 500, 12_000),
     },
     server: {
       host: str('HOST') ?? '127.0.0.1',
