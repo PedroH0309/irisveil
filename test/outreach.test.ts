@@ -139,7 +139,7 @@ describe('buildOutreachMessages', () => {
   it('sends only audited facts, never the unchecked company summary', () => {
     const brief = {
       company: { name: 'Acme', oneLiner: 'Serves enterprise teams worldwide.', offering: 'Unlimited integrations.', audience: 'Fortune 500.' },
-      signals: [{ id: 's1', category: 'product' as const, claim: 'Ships weekly.', quote: 'We ship every week.', sourceUrl: 'u' }],
+      signals: [{ id: 's1', category: 'product' as const, claim: 'Ships weekly.', quote: 'We ship every week.', sourceUrl: 'u', sourceType: 'company_site' as const, retrievedAt: 't' }],
       hypotheses: [],
       dropped: [{ claim: 'Serves enterprise teams.', quote: "We don't serve enterprise teams.", reason: 'contradicted' }],
       proposedSignals: 2,

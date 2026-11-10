@@ -80,5 +80,7 @@ export async function readProfileFile(network: ProfileNetwork, file: ProfileFile
     title: `${NETWORK_LABEL[network]} profile (${name})`,
     description: '',
     text: clean,
+    sourceType: 'recipient_profile',
+    retrievedAt: new Date().toISOString(),
   };
 }

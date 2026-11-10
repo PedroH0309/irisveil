@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { IrisVeilError } from './errors.js';
 import { completeStructured, type ChatMessage, type LlmClient, type LlmUsage } from './llm.js';
 import type { SenderProfile } from './config.js';
-import type { SourcePage } from './site.js';
+import type { SourcePage, SourceType } from './site.js';
 import { DETERMINISTIC_VALIDATOR, SEMANTIC_VALIDATOR, checkClaimAgainstQuote, judgeClaims, type ClaimVerdict, type Judgement } from './consistency.js';
 import { charClass } from './chars.js';
 
@@ -72,6 +72,9 @@ export interface Signal {
   claim: string;
   quote: string;
   sourceUrl: string;
+  /** Type of the page the quote was actually found on, not the one the model cited. */
+  sourceType: SourceType;
+  retrievedAt: string;
   /** Validators that passed this claim, in order. */
   validatedBy?: string[];
 }
@@ -197,8 +200,11 @@ function samePage(a: string, b: string): boolean {
 }
 
 export function verifyResearch(draft: ResearchDraft, pages: SourcePage[]): ResearchBrief {
+  const fallbackTime = new Date().toISOString();
   const normalizedPages = pages.map((page) => ({
     url: page.url,
+    sourceType: page.sourceType ?? ('company_site' as SourceType),
+    retrievedAt: page.retrievedAt ?? fallbackTime,
     text: normalizeForMatch([page.title, page.description, page.text].join('\n')),
   }));
 
@@ -236,7 +242,7 @@ export function verifyResearch(draft: ResearchDraft, pages: SourcePage[]): Resea
     }
     const id = `s${signals.length + 1}`;
     if (!idMap.has(signal.id)) idMap.set(signal.id, id);
-    signals.push({ id, category: signal.category, claim: signal.claim, quote: signal.quote, sourceUrl: match.url });
+    signals.push({ id, category: signal.category, claim: signal.claim, quote: signal.quote, sourceUrl: match.url, sourceType: match.sourceType, retrievedAt: match.retrievedAt });
   }
 
   if (signals.length === 0) {

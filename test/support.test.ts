@@ -74,7 +74,7 @@ const sample: IrisVeilResult = {
   generatedAt: '2026-10-19T00:00:00.000Z',
   input: { url: 'https://acme.example/', recipient: null, offer: 'offer', senderName: 'Ayush', senderRole: '', senderCompany: 'YourAKShaw', senderAddress: '', senderMobile: '', senderEmail: '', senderWebsite: '', linkedin: null, x: null },
   company: { name: `Acme${ESC}[31m`, oneLiner: `Rockets${RLO}evil`, offering: '', audience: '' },
-  signals: [{ id: 's1', category: 'product', claim: 'Makes rockets', quote: 'We make rockets for road runners', sourceUrl: 'https://acme.example/' }],
+  signals: [{ id: 's1', category: 'product', claim: 'Makes rockets', quote: 'We make rockets for road runners', sourceUrl: 'https://acme.example/', sourceType: 'company_site' as const, retrievedAt: 't' }],
   hypotheses: [{ statement: 'Needs more coyotes', basedOn: ['s1'], confidence: 'low' }],
   emails: [{ angle: 'Rockets', subject: 'About your rockets', body: 'Hi team,\n\nBody text.', basedOn: ['s1'], wordCount: 4 }],
   sources: [{ url: 'https://acme.example/', title: 'Acme' }],
