@@ -31,7 +31,7 @@ function normalise(text: string): string {
 }
 
 function negationCount(text: string): number {
-  const idioms = normalise(text).replace(/\b(?:no (?:more|less|fewer) than|not only|no matter)\b/g, ' ');
+  const idioms = normalise(text).replace(/\b(?:no (?:more|less|fewer) than|not only|no matter|not un\w+)\b/g, ' ');
   return idioms.match(NEGATION)?.length ?? 0;
 }
 
@@ -58,7 +58,7 @@ type Bound = { kind: 'max' | 'min'; value: number };
 
 function bounds(text: string): Bound[] {
   const found: Bound[] = [];
-  const pattern = /\b(up to|at most|maximum of|no more than|max\.?|more than|over|at least|minimum of|beyond|unlimited)\s*\$?(\d[\d,]*(?:\.\d+)?)?/g;
+  const pattern = /\b(up to|at most|maximum of|no more than|max\.?|more than|over|at least|minimum of|starts? at|from|beyond|unlimited)\s*\$?(\d[\d,]*(?:\.\d+)?)?/g;
   for (const match of normalise(text).matchAll(pattern)) {
     const phrase = match[1]!;
     if (phrase === 'unlimited') {
