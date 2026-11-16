@@ -151,8 +151,8 @@
     const { signalsVerified, signalsProposed } = result.stats;
     $('evidence-note').textContent =
       signalsVerified === signalsProposed
-        ? `All ${signalsVerified} claims matched the site’s text word for word.`
-        : `${signalsVerified} of ${signalsProposed} claims matched the site’s text word for word and passed the consistency check. The rest were dropped.`;
+        ? `All ${signalsVerified} claims matched their source text and passed the consistency audit.`
+        : `${signalsVerified} of ${signalsProposed} claims matched their source text and passed the consistency audit. The rest were dropped.`;
 
     const dropped = $('dropped');
     dropped.replaceChildren();
@@ -164,7 +164,7 @@
         el(
           'details',
           { class: 'dropped' },
-          el('summary', { text: `${count} claim${count === 1 ? ' was' : 's were'} dropped: the quote isn’t on the site or doesn’t support the claim` }),
+          el('summary', { text: `${count} claim${count === 1 ? ' was' : 's were'} dropped: the source quote is missing, unsupported or inconsistent` }),
           list,
         ),
       );
