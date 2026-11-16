@@ -29,14 +29,14 @@ Built by [YourAKShaw](https://github.com/YourAKShaw), an AI agents and automatio
 
 Founders spend hours researching each prospect before a cold email, and AI tools that promise to do it for them have a habit of inventing the details: a funding round that never happened, a customer they don't have, a launch from someone else's blog. One invented fact and the email is worse than generic.
 
-**IrisVeil is a research agent with a hard rule: an email may only use facts that IrisVeil found, verbatim, on the prospect's own website.** The model proposes facts together with exact quotes; IrisVeil checks every quote against the page text it fetched, then audits whether each quote really supports its claim, and throws away anything that fails either check. The drafts are written from what survives, and each draft shows which facts it relies on.
+**IrisVeil is a research agent that grounds outreach claims in quoted source material.** By default this is the prospect's own website; users can also supply external source URLs and recipient profile files. The model proposes facts together with exact quotes; IrisVeil checks each quote against the corresponding fetched page or uploaded profile text, then uses rules and a model audit to assess whether it supports the claim. The audit is a model judgement, not proof, so review every draft before sending. The drafts are written from what survives, and each draft shows which facts it relies on.
 
 | What you get | What it means in practice |
 | :--- | :--- |
 | **A cited research brief** | What the company sells, who it serves, and 3 to 7 outreach-worthy facts, each with the exact quote and the page it came from. |
 | **An audit trail** | "5 of 7 claims verified, 2 dropped": you see what the model tried to claim, what IrisVeil refused to use, and why (quote missing, contradicted, not supported, or conflicting sources). |
 | **Opt-in outside sources** | Add up to three news or press pages with `--source`. Their facts stay labelled as third-party reports, never as the company's own words. |
-| **Three distinct drafts** | Three angles, 60 to 130 words each, with the facts each one is built on. No links, no `[Name]` placeholders, no invented metrics. |
+| **Three distinct drafts** | Three angles, with a prompt target of 60 to 130 words. Validation permits 40 to 170 words per body; each draft cites the facts it uses. Links and `[Name]` placeholders are rejected, while factual claims still require human review. |
 | **Educated guesses, labelled** | Likely priorities inferred from the facts, marked as hypotheses with a confidence level and phrased as questions in the drafts. |
 | **$0 to run** | Works on free model tiers (Groq by default), runs locally, and deploys to a free Render web service. |
 
@@ -123,6 +123,7 @@ irisveil serve [--port N] [--host H] Start the web app
 
 -t, --to <"Name, Role">   Who the emails are for, e.g. "Cristina Cordova, Chief Operating Officer"
 -o, --offer <text>        What you sell (defaults to SENDER_OFFER)
+    --source <url>       Opt in to a third-party page; repeat up to 3 times
     --linkedin <file>     Path to the recipient's LinkedIn PDF (profile → More → Save to PDF)
     --x <file>            Path to a Markdown export of the recipient's X profile, made with Grok
     --out <file>          Also save the result (.md for Markdown, .json for JSON)
@@ -353,6 +354,7 @@ irisveil/
 │   └── version.ts      # Package version
 ├── public/             # Web app: HTML, CSS, JS, self-hosted fonts (OFL)
 ├── test/               # Unit and end-to-end tests with a fixture site and fake model server
+├── eval/               # Claim-audit evaluation scripts and fixtures
 ├── docs/               # Screenshot and a script for a 60-second demo recording
 ├── .github/            # Contributing, support, CI, Dependabot, issue and PR templates
 ├── render.yaml         # Free Render deployment
