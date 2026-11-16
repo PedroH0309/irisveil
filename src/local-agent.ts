@@ -6,7 +6,7 @@ import { IrisVeilError } from './errors.js';
 import type { ChatMessage, CompleteOptions, LlmClient, LlmCompletion } from './llm.js';
 
 /**
- * Runs IrisVeil's two prompts through an AI coding CLI that is already installed and signed in
+ * Runs IrisVeil's research, claim-audit and drafting prompts through an AI coding CLI
  * (Claude Code, Codex, Antigravity or Grok) instead of an API key. Each call is one headless,
  * single-turn run in an empty temporary folder, with web search and tools off where the CLI
  * allows it, so the agent only reads the prompt and answers. IrisVeil still validates the output.
