@@ -14,7 +14,7 @@ Please report vulnerabilities privately through [GitHub security advisories](htt
 | Oversized or malicious responses | 8 s deadline per page, 1.5 MB decompressed cap (bounds gzip/brotli bombs), at most 4 redirects and 4 pages | `src/site.ts` |
 | Prompt injection in website text | Website text is delimited and labelled untrusted; the model has **no tools**; output is schema-validated; facts survive only if their quote exists verbatim in the fetched text; drafts containing links or placeholders are repaired once, then discarded | `src/research.ts`, `src/outreach.ts` |
 | Script injection through model output | The browser renders everything with `textContent`; strict CSP (`default-src 'none'`, `script-src 'self'`); the terminal view strips control and bidi characters | `public/app.js`, `src/server.ts`, `src/format.ts` |
-| Quota abuse on a public demo | JSON-only POST with a same-origin check, 8 KB body cap, per-IP window, concurrency cap, daily run budget, result cache, aborting runs when the client disconnects | `src/server.ts`, `src/limits.ts` |
+| Quota abuse on a public demo | JSON-only POST with a same-origin check, 6 MB request body cap, per-IP window, concurrency cap, daily run budget, result cache, aborting runs when the client disconnects | `src/server.ts`, `src/limits.ts` |
 | Secret leakage | The API key is only sent to the configured provider; it is never logged, returned by `/api/meta`, or included in prompts | `src/llm.ts`, `src/server.ts` |
 
 ## Known limits
@@ -27,4 +27,4 @@ Please report vulnerabilities privately through [GitHub security advisories](htt
 
 ## Data handling
 
-IrisVeil has no database. A run sends the fetched page text, your offer text and the recipient name you typed to your configured LLM provider, under that provider's data policy. The web app keeps finished results in memory for `CACHE_TTL_MINUTES` (default 6 hours) and logs the target hostname, outcome, timing and token counts, not page text, offers or recipient names.
+IrisVeil has no database. A run sends fetched company page text, any explicitly supplied external-source text, extracted LinkedIn PDF or X Markdown profile text when provided, your offer text and the recipient name you typed to your configured LLM provider, under that provider's data policy. The web app keeps finished results in memory for `CACHE_TTL_MINUTES` (default 6 hours) and logs the target hostname, outcome, timing and token counts, not page text, offers or recipient names.
